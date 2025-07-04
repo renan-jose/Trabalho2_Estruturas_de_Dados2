@@ -21,32 +21,45 @@ TabelaGenerica criarTabela(int);
 
 // Inserção
 
-// Explicar
 /* Insere um elemento na tabela de espalhamento e retorna um indicador de sucesso.
  * Parâmetros: 
  *  - tabela de espalhamento (tipo TabelaGenerica);
- *  - chave do elemento da tabela de espalhamento (tipo char* (string));
+ *  - chave do elemento na tabela de espalhamento (tipo char* (string));
  *  - dado da tabela de espalhamento (tipo DadoGenerico).
  * Retorno:
- *  - indicador de sucesso (1 para inserção bem-sucedida e 0 para mal-sucedida) (tipo int).*/
+ *  - indicador de sucesso (tipo int).*/
 int inserirElementoTabela(TabelaGenerica, char *, DadoGenerico);
 
 
 // Remoção
 
-// Explicar
+/* Remove um elemento com determindada chave na tabela. 
+ * Parâmetros: 
+ *  - tabela de espalhamento (tipo TabelaGenerica);
+ *  - chave do elemento na tabela de espalhamento (tipo char* (string)).
+ * Retorno:
+ *  - indicador de sucesso (tipo int). */
 int removerElementoTabela(TabelaGenerica, char *);
 
 
 // Busca
 
-//Explicar
+/* Busca e retorna um elemento com determinada chave na tabela. 
+ * Parâmetros: 
+ *  - tabela de espalhamento (tipo TabelaGenerica);
+ *  - chave do elemento na tabela de espalhamento. (tipo char* (string)).
+ * Retorno: 
+ *  - elemento da tabela de espalhamento encontrado (tipo DadoGenerico).*/
 DadoGenerico buscarElementoTabela(TabelaGenerica, char *);
 
 
 // Desalocação
 
-// Explicar
+/* Desaloca a memória usada na construção da tabela de espalhamento. 
+ * Parâmetros:
+ *  - tabela de espalhamento (tipo TabelaGenerica).
+ * Retorno: 
+ *  - nenhum. */
 void desalocarTabela(TabelaGenerica);
 
 #endif // _ESPALHAMENTO_H_
