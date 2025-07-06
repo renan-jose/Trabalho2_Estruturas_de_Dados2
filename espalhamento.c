@@ -6,7 +6,7 @@
 
 ////////////////////////////////////////////////////////////////////////////////////////
 
-/* Um nó da tabela de espalhamento possui uma chave, um dado de qualquer tipo e um
+/* O nó da tabela de espalhamento possui uma chave, um dado de qualquer tipo e um
  * apontamento para o próximo nó. */
 struct No{
 
@@ -16,11 +16,11 @@ struct No{
 
 };
 
-// Uma tabela de espalhamento possui um tamanho e uma lista com seus nós. 
+// A tabela de espalhamento possui um tamanho e uma lista com seus nós. 
 struct Tabela{
 
     int tamanho;
-    struct No **dados;
+    struct No **baldes;
 
 };
 
@@ -64,10 +64,10 @@ TabelaGenerica criarTabela(int tamanho){
 
     // Os demais campos da tabela nova são preenchidos.
     novaTabela->tamanho = tamanho;
-    novaTabela->dados = (No**)calloc(tamanho, sizeof(No*)); // Aloca a lista de nós da tabela.
+    novaTabela->baldes = (No**)calloc(tamanho, sizeof(No*)); // Aloca a lista de nós da tabela.
 
     // Verifica a alocação.
-    if(novaTabela->dados == NULL){
+    if(novaTabela->baldes == NULL){
         printf("Erro: Falha na alocacao de memoria para a criacao da lista de nos da tabela de espalhamento!\n");
         free(novaTabela);
         return NULL;
@@ -83,15 +83,19 @@ TabelaGenerica criarTabela(int tamanho){
 // Função auxiliar.
 static char *duplicarString(char *string){
 
+    // Aloca a cópia da string
     char *copia = (char*)malloc(strlen(string) + 1);
 
+    // Verifica a alocação.
     if(copia == NULL){
         printf("Erro: Falha na alocacao de memoria para a duplicao de strings!\n");
         return NULL;
     }
 
+    // Função strcpy realiza o processo de cópia.
     strcpy(copia, string);
 
+    // Retorna a string copiada.
     return copia;
 
 }
@@ -103,29 +107,30 @@ int inserirElementoTabela(TabelaGenerica t, char *chave, DadoGenerico dado){
     // Acesso para os campos da struct Tabela.
     Tabela *tabela = (Tabela*)t;
 
-    unsigned int indice = converterStringParaIndice(chave, tabela->tamanho);
-    No *auxiliar = tabela->dados[indice];
-
-    while(auxiliar != NULL){
-        if(strcmp(auxiliar->chave, chave) == 0){
-            printf("Alerta: Elemento ja existente na tabela de espalhamento!\n");
-            return 0;
-        }
-        auxiliar = auxiliar->proximo;
+    // Antes do processo de inserção, verifica se o elemento a ser colocado está na tabela.
+    if(buscarElementoTabela(t, chave) != NULL){
+        printf("Aviso: O elemento nao foi inserido pois ja existe na tabela de espalhamento!\n");
+        return 0;
     }
 
+    unsigned int indice = converterStringParaIndice(chave, tabela->tamanho);
+
+    // Aloca o nó novo
     No *novoNo = (No*)malloc(sizeof(No));
 
+    // Verifica a alocação.
     if(novoNo == NULL){
         printf("Erro: Falha na alocacao de memoria para a criacao do novo elemento na tabela de espalhamento!\n");
         return 0;
     }
 
+    // Preenche os demais campos do nó.
     novoNo->chave = duplicarString(chave);
     novoNo->dado = dado;
-    novoNo->proximo = tabela->dados[indice];
-    tabela->dados[indice] = novoNo;
+    novoNo->proximo = tabela->baldes[indice];
+    tabela->baldes[indice] = novoNo;
 
+    // Retorna 1 (Inserção bem-sucedida).
     return 1;
 
 }
@@ -134,15 +139,24 @@ int inserirElementoTabela(TabelaGenerica t, char *chave, DadoGenerico dado){
 
 int removerElementoTabela(TabelaGenerica t, char *chave){
 
+    // Acesso para os campos da struct Tabela.
     Tabela *tabela = (Tabela*)t;
 
+    DadoGenerico dado = buscarElementoTabela(t, chave);
+
+    // Antes do processo de remoção, verifica se o elemento a ser colocado está fora na tabela.
+    if(dado == NULL){
+        printf("Aviso: O elemento nao foi removido pois nao existe na tabela de espalhamento!\n");
+        return 0;
+    }
+
     unsigned int indice = converterStringParaIndice(chave, tabela->tamanho);
-    No *auxiliar = tabela->dados[indice], *anterior = NULL;
+    No *auxiliar = tabela->baldes[indice], *anterior = NULL;
 
     while(auxiliar != NULL){
         if(strcmp(auxiliar->chave, chave) == 0){
             if(anterior == NULL){
-                tabela->dados[indice] = auxiliar->proximo;
+                tabela->baldes[indice] = auxiliar->proximo;
             }else{
                 anterior->proximo = auxiliar->proximo;
             }
@@ -166,7 +180,7 @@ DadoGenerico buscarElementoTabela(TabelaGenerica t, char *chave){
     Tabela *tabela = (Tabela*)t;
 
     unsigned int indice = converterStringParaIndice(chave, tabela->tamanho);
-    No *auxiliar = tabela->dados[indice];
+    No *auxiliar = tabela->baldes[indice];
     DadoGenerico valorEncontrado;
 
     while(auxiliar != NULL){
@@ -192,7 +206,7 @@ void desalocarTabela(TabelaGenerica t){
     No *auxiliar, *temporario;
 
     for(i = 0; i < tabela->tamanho; i++){
-        auxiliar = tabela->dados[i];
+        auxiliar = tabela->baldes[i];
         while(auxiliar != NULL){
             temporario = auxiliar;
             auxiliar = auxiliar->proximo;
@@ -202,7 +216,7 @@ void desalocarTabela(TabelaGenerica t){
         }
     }
 
-    free(tabela->dados);
+    free(tabela->baldes);
     free(tabela);
 
 }
