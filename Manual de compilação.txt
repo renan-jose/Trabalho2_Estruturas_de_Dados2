@@ -1,9 +1,0 @@
-Chegar até o programa:
-cd "/mnt/c/Users/Usuario/Documents/Desenvolvimento/UEL/ED2/renansantos/src"
-
-Gerar o executável:
-make ted
-
-Executar:
-./ted
-
