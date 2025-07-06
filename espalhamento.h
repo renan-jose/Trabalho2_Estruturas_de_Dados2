@@ -1,4 +1,8 @@
-/* Comentar depois o que é uma tabela de espalhamento. */
+/* De forma rápida, uma tabela de espalhamento é uma estrutura de dados que armazena valores associados a uma 
+ * diferente chave. 
+ * Assim, ao inserir um dado com uma determinada chave na tabela, essa chave é convertida em número, que se 
+ * torna o índice, ou melhor, a posição na tabela a ser colocado o dado, e, ao removê-lo, sua chave é procurada
+ * na tabela e, sendo encontrada, o processo de remoção é inicializado. */
 
 /* Proteção contra múltiplas inclusões, garantindo que este cabeçalho seja incluído apenas uma vez 
  * durante a compilação, evitando redefinições e conflitos. */
