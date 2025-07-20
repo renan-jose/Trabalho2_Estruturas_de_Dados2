@@ -46,7 +46,7 @@ bool (*dfsRestarted)(Graph g, void *extra);
  *  - nVert = número de vértices do grafo (tipo int).
  * Retorno: 
  *  - Novo grafo (tipo Graph). */
-Graph createGraph(int nVert, bool directed);
+Graph createGraph(int nVert, bool directed, char *nome);
 
 
 /* Retorna número máximo de vértices que grafo g pode conter. 
@@ -84,7 +84,12 @@ Node addNode(Graph g, char *nome, Info info);
 Node getNode(Graph g, char *nome);
 
 
-/* Retorna a informação associada ao nó node*/
+/* Retorna a informação associada ao nó node
+ * Parâmetros:
+ *    - g = grafo (tipo Graph);
+ *    - node = número do nó (vértice) do grafo (tipo Node);
+ * Retorno:
+ *    - informação do vértice (tipo Info); */
 Info getNodeInfo(Graph g, Node node); 
 
 
