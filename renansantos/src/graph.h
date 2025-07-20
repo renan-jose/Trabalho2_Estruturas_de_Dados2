@@ -57,7 +57,7 @@ Graph createGraph(int nVert, bool directed, char *nome);
 int getMaxNodes(Graph g);
 
 
-/* Retorna número total de vértices adicionados ao grafo gr. 
+/* Retorna número total de vértices adicionados ao grafo g. 
  * Parâmetos: 
  *    - g = grafo (tipo Graph);
  * Retorno:
@@ -65,7 +65,7 @@ int getMaxNodes(Graph g);
 int getTotalNodes(Graph g);
 
 
-/* Adiciona um novo vértice ao grafo "g" com o nome "nome". 
+/* Adiciona um novo vértice ao grafo g com o nome "nome". 
  * Parâmetros:
  *    - g = grafo (tipo Graph);
  *    - *nome = nome do vértice do grafo g (tipo char (string));
@@ -75,7 +75,7 @@ int getTotalNodes(Graph g);
 Node addNode(Graph g, char *nome, Info info);
 
 
-/* Retorna nó cujo de nome é "nome". 
+/* Retorna o vértice do grafo g cujo nome é "nome". 
  * Parâmetros: 
  *    - g = grafo (tipo Graph);
  *    - *nome = nome do vértice do grafo g (tipo char (string)); 
@@ -84,86 +84,159 @@ Node addNode(Graph g, char *nome, Info info);
 Node getNode(Graph g, char *nome);
 
 
-/* Retorna a informação associada ao nó node
+/* Retorna a informação associada ao vértice node do grafo g.
  * Parâmetros:
  *    - g = grafo (tipo Graph);
- *    - node = número do nó (vértice) do grafo (tipo Node);
+ *    - node = número do nó (vértice) do grafo g (tipo Node);
  * Retorno:
  *    - informação do vértice (tipo Info); */
 Info getNodeInfo(Graph g, Node node); 
 
 
-/*
+/* Retorna a nome do vértice node do grafo g.
+ * Parâmetros:
+ *    - g = grafo (tipo Graph);
+ *    - node = número do vértice do grafo g (tipo Node);
+ * Retorno: 
+ *    - nome do vértice do grafo g (tipo char* (string));
  */
 char *getNodeName(Graph g, Node node);
 
 
-/*
+/* Altera a informação associada vértice node do grafo g.
+ * Parâmetros:
+ *    - g = grafo (tipo Graph);
+ *    - node = número do vértice do grafo g (tipo Node);
+ *    - info = nova informação do vértice do grafo g.
+ * Retorno: 
+ *    - nenhum;
  */
 void setNodeInfo(Graph g, Node node, Info info);
 
 
-/*
+/* Adiciona uma nova aresta no grafo g e a retorna.
+ * Parâmetros:
+ *    - g = grafo (tipo Graph);
+ *    - from = vértice de origem da nova aresta (tipo Node);
+ *    - to = vértice de destino da nova aresta (tipo Node);
+ *    - info = informação associada à nova aresta (tipo Info);
+ * Retorno:
+ *    - nova aresta (tipo Edge) 
  */
 Edge addEdge(Graph g, Node from, Node to, Info info);
 
 
-/*
+/* Retorna a aresta do grafo g com vértice de origem from e destino to.
+ * Parâmetros:
+ *    - g = grafo (tipo Graph);
+ *    - from = vértice de origem da aresta pertencente ao grafo g (tipo Node);
+ *    - to = vértice de destino da aresta pertencente ao grafo g (tipo Node);
+ * Retorno:
+ *    - aresta alvo da busca (tipo Edge);
  */
 Edge getEdge(Graph g, Node from, Node to);
 
 
-/*
+/* Retorna o vértice de origem da aresta e, pertencente ao grafo g.
+ * Parâmetros: 
+ *    - g = grafo (tipo Graph);
+ *    - e = aresta do grafo g (tipo Edge);
+ * Retorno:
+ *    - número do vértice (tipo Node);
  */
 Node getFromNode(Graph g, Edge e);
 
   
-/*
+/* Retorna o vértice de destino da aresta e, pertencente ao grafo g.
+ * Parâmetros:
+ *    - g = grafo (tipo Graph);
+ *    - e = aresta do grafo g (tipo Edge);
+ * Retorno: 
+ *    - número do vértice (tipo Node);
  */  
 Node getToNode(Graph g, Edge e);
 
 
-/*
+/* Retorna a informação associada à aresta e, pertencente ao grafo g.
+ * Parâmetros:
+ *    - g = grafo (tipo Graph);
+ *    - e = aresta (tipo Edge);
+ * Retorno:
+ *    - informação da aresta e (tipo Info);
  */
 Info getEdgeInfo(Graph g, Edge e);
 
 
-/*
+/* Altera a informação associada à aresta e, pertencenete ao grafo g.
+ * Parâmetros:
+ *    - g = grafo (tipo Graph);
+ *    - e = aresta do grafo g (tipo Edge);
+ *    - info = nova informação da aresta e, pertencente ao grafo g;
+ * Retorno:
+ *    - nenhum;
  */
 void setEdgeInfo(Graph g, Edge e, Info info);
 
 
-/*
+/* Remove a aresta e, pertencente ao grafo g.
+ * Parâmetros: 
+ *    - g = grafo (tipo Graph);
+ *    - e = aresta do grafo g (tipo Edge);
+ * Retorno:
+ *    - nenhum;
  */
 void removeEdge(Graph g, Edge e);
 
 
-/*
+/* Verifica a adjacência de um vérice do grafo g.
+ * Parâmetros:
+ *    - g = grafo (tipo Graph);
+ *    - from = vértice de origem da aresta (tipo Node);
+ *    - to = vértice de destino da aresta (tipo Node);
+ * Retorno:
+ *    - true se o vértice for adjacente, ou false, caso contrário (tipo bool);
  */
 bool isAdjacent(Graph g, Node from, Node to);
 
 
-/* 
-   Adiciona 'a lista "nosAdjacentes" os nos adjacentes 'a "node".
+/* Adiciona a lista nosAdjacentes os vértices adjacentes à node.
+ * Parâmetros:
+ *    - g = grafo (tipo Graph);
+ *    - node = vértice do grafo g (tipo Node);
+ *    - nosAdjacentes = lista simples (tipo Lista);
+ * Retorno:
+ *    - nenhum;
  */
 void adjacentNodes(Graph g, Node node, Lista nosAdjacentes);
 
 
-/*
-   Adiciona 'a lista "arestaAdjacentes" as arestas (x,y), tal que,
-   x == node.
+/* Adiciona à lista arestaAdjacentes as arestas (x,y), tal que, x == node.
+ * Parâmetros:
+ *    - g = grafo (tipo Graph);
+ *    - node = vértice do grafo g;
+ *    - arestasAdjacentes = lista simples (tipo Lista);
+ * Retorno:
+ *    - nenhum;
  */
 void adjacentEdges(Graph g, Node node, Lista arestasAdjacentes);
 
 
-/*
-   Insere na lista "nomesNodes" os nomes atribuidos aos nos do grafo.
+/* Insere na lista nomesNodes os nomes atribuidos aos vértices do grafo.
+ * Parâmetros:
+ *    - g = grafo (tipo Graph);
+ *    - nomesNodes = lista simples (tipo Lista);
+ * Retorno:
+ *    - nenhum;
  */
 void getNodeNames(Graph g, Lista nomesNodes);
 
 
-/*
-   Insere na lista "arestas", as arestas de g.
+/* Insere na lista arestas, as arestas do grafo g.
+ * Parâmetros:
+ *    - g = grafo (tipo Graph);
+ *    - arestas = lista simples (tipo Lista);
+ * Retorna:
+ *    - nenhum;
  */
 void getEdges(Graph g, Lista arestas);
 
@@ -185,60 +258,110 @@ bool dfs(Graph g, Node node, procEdge treeEdge, forwardEdge, returnEdge,
 bool bfs(Graph g, node, discoverNode, void *extra);
 
 
-/*
-   Destroi o grafo "g".
+/* Desaloca a memória usada pelo grafo g.
+ * Parâmetros:
+ *    - g = grafo (tipo Graph);
+ * Retorno:
+ *    - nenhum;
  */
 void killDG(Graph g);
+
 
 /*
  **********************
  * SUB-GRAFOS
  **********************
-/*
-    Calcula o subgrafo composto  pelos vertices cujos nomes estao no vetor nomesVerts
-(nVerts e' o tamanho deste vetor). Caso comAresta seja true calcula o subgrafo 
-induzido pelos vertices em nomesVers
+
+
+/* Calcula o subgrafo composto pelos vértices cujos nomes estão no vetor nomesVerts (nVerts é o tamanho deste vetor). 
+ * Caso comAresta seja true, calcula o subgrafo induzido pelos vértices em nomesVers.
+ * Parâmetros:
+ *    - g = grafo (tipo Graph);
+ *    - nomeSubgrafo = nome do novo subgrafo (tipo char* (string));
+ *    - nomesverts = vetor com os nomes do vértices (tipo char*[] (vetor de strings));
+ *    - nVert = tamanho do vetor nomesverts (tipo int);
+ *    - comArestas = verificação de existência ou não de arestas no novo subgrafo (tipo bool);
+ * Retorno:
+ *    - nenhum;
  */
 void createSubgraphDG(Graph g, char *nomeSubgrafo, char *nomesVerts[], int nVert, bool comArestas);
 
 
-/*
-    Adiciona a aresta ao subgrafo.
+/* Adiciona a aresta e ao subgrafo nomeado nomeSubgrafo.
+ * Parâmetros:
+ *    - g = grafo (tipo Graph);
+ *    - nomeSubgrafo = nome do subgrafo (tipo char* (string));
+ *    - e = aresta do grafo g (tipo Edge);
+ * Retorno:
+ *    - aresta recém adicionada (tipo Edge);
  */
 Edge includeEdgeSDG(Graph g, char *nomeSubgrafo, Edge e);
 
-/*
-  Retorna verdadeiro se a aresta "e" pertence ao subgrafo "nomeSubgrafo" do grafo g; 
-  falso, caso contrario.
+
+/* Verifica o pertencimento da aresta 'e' ao subgrafo nomeado nomeSubgrafo.
+ * Parâmetros:
+ *    - g = grafo (tipo Graph);
+ *    - nomeSubgrafo = nome do subgrafo (tipo char* (string));
+ *    - e = aresta do grafo g (tipo Edge);
+ * Retorno:
+ *    - true, caso sim, e false, caso não (tipo bool);
  */
 bool existsEdgeSDG(Graph g, char *nomeSubgrafo, Edge e);
 
-/*
-  Retira a aresta "e" do subgrafo "nomeSubgrafo". Ou seja, desfaz a correspondente 
-  operacao includeEdgeSg previamente executada. 
-  Note que a aresta  "e" NAO e' removida do grafo g.
+
+/* Retira a aresta 'e' do subgrafo nomeSubgrafo. Ou seja, desfaz a correspondente 
+ * operação includeEdgeSg previamente executada. A aresta 'e' não é removida do grafo g.
+ * Parâmetros:
+ *    - g = grafo (tipo Graph);
+ *    - nomeSubgrafo = nome do subgrafo (tipo char* (string));
+ *    - e = aresta do grafo g (tipo Edge);
+ * Retorno:
+ *    - nenhum;
  */
 void excludeEdgeSDG(Graph g, char *nomeSubgrafo, Edge e);
 
-/*
-   Adiciona 'a lista "arestaAdjacentes" as arestas (x,y), tal que:
-   x == node; x pertence ao subgrafo "nomeSubgrafo", (x,y) tambem e' aresta
-   do subgrafo.
+
+/* Adiciona a lista arestaAdjacentes as arestas (x,y), tal que: x == node; 
+ * x pertence ao subgrafo nomeSubgrafo, (x,y) tambem é aresta do subgrafo.
+ * Parâmetros:
+ *    - g = grafo (tipo Graph);
+ *    - nomeSubgrafo = nome do subgrafo (tipo char* (string));
+ *    - node = vértice do grafo g (tipo Node);
+ *    - arestasAdjacentes = lista simples (tipo Lista);
+ * Retorno:
+ *    - nenhum;
  */
 void adjacentEdgesSDG(Graph g, char *nomeSubgrafo, Node node, Lista arestasAdjacentes);
 
-/*
-   Adiciona 'a lista "lstNodes" (Lista<Node>) os n�s do subgrafo "nomeSubgrafo".
+
+/* Adiciona a lista lstNodes os vértices do subgrafo nomeSubgrafo.
+ * Parâmetros: 
+ *    - g = grafo (tipo Graph);
+ *    - nomeSubgrafo = nome do subgrafo (tipo char* (string));
+ *    - lstNodes = lista simples (tipo Lista);
+ * Retorno:
+ *    - retorno;
  */
 void getAllNodesSDG(Graph g, char *nomeSubgrafo, Lista lstNodes);
 
-/*
-   Adiciona 'a lista "lstEdges" (Lista<Edge>) as arestas do subgrafo "nomeSubgrafo".
+
+/* Adiciona a lista lstEdges as arestas do subgrafo nomeSubgrafo.
+ * Parâmetros:
+ *    - g = grafo (tipo Graph);
+ *    - nomeSubgrafo = nome do subgrafo (tipo char* (string));
+ *    - lstEdges = lista simples (tipo Lista);
+ * Retorno:
+ *    - nenhum;
  */
 void getAllEdgesSDG(Graph g, char *nomeSubgrafo, Lista lstEdges);
 
-/*
-  Novo grafo.
+
+/* Cria um novo grafo a partir dos dados do subgrafo nomeado nomeSubgrafo.
+ * Parâmetros:
+ *    - g = grafo (tipo Graph);
+ *    - nomeSubgrafo = nome do subgrafo (tipo char* (string));
+ * Retorno:
+ *    - novo grafo (tipo Graph)
  */
 Graph produceGraph(Graph g, char *nomeSubgrafo);
 
