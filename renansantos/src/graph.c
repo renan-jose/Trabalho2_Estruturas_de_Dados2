@@ -1,11 +1,17 @@
 // Importação das bibliotecas.
 #include "graph.h"
 #include "espalhamento.h"
+#include "fila.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdint.h>
 
 ////////////////////////////////////////////////////////////////////////////////////////
+
+#define NAO_VISITADO 0
+#define DESCOBERTO 1
+#define FINALIZADO 2
 
 /* Grafo é uma estrutura de dados que contém vértices e arestas. Ele conta com 
  * subgrafos também. Assim, o seguinte grafo foi dividido dem 4 estruturas, oriundas
@@ -33,12 +39,20 @@ struct Vertice{
 
 };
 
+struct BoundingBox{
+
+    double x, y, w, h;
+
+};
+
 /* A aresta do grafo possui dados importantes (que podem ser manipulados depois), um vértice 
  * destino e um apontamento para a próxima aresta. */
 struct Aresta{
 
     Info dados;
     Node destino;
+    bool ativa;
+    struct BoundingBox boundingBox;
     struct Aresta *proxima; // Próxima aresta na lista de adjacência
 
 };
@@ -48,8 +62,9 @@ struct Aresta{
 struct Subgrafo{
 
     char *nome;
-    int qtdArestas;
-    TabelaGenerica arestas;
+    int qtdArestas, qtdVertices;
+    struct Vertice **vertices;
+    struct Aresta **arestas;
 
 };
 
@@ -59,6 +74,7 @@ struct Subgrafo{
  * contendo seus vértices e subgrafos. */
 struct Grafo{
 
+    char *nome;
     int qtdVertices, qtdArestas, qtdSubgrafos, limiteVertices;
     bool direcionado;
     struct Vertice **vertices; // Lista dos seus vértices.
@@ -69,13 +85,14 @@ struct Grafo{
 
 // Nomes alternativos para os tipos de dados existentes.
 typedef struct Vertice Vertice;
+typedef struct BoundingBox BoundingBox;
 typedef struct Aresta Aresta;
 typedef struct Grafo Grafo;
 typedef struct Subgrafo Subgrafo;
 
 ////////////////////////////////////////////////////////////////////////////////////////
 
-Graph createGraph(int nVert, bool directed){
+Graph createGraph(int nVert, bool directed, char *nome){
 
     if(nVert <= 0){
         printf("Erro: O numero de vertices maximos do grafo nao deve ser negativo ou igual a zero!\n");
@@ -94,6 +111,16 @@ Graph createGraph(int nVert, bool directed){
     // Alguns dos campos do grafo novo são preenchidos.
     novoGrafo->direcionado = directed;
     novoGrafo->limiteVertices = nVert;
+
+    novoGrafo->nome = (char*)malloc(strlen(nome) + 1);
+
+    if(novoGrafo->nome == NULL){
+        printf("Erro: Falha na alocacao de memoria para o nome no grafo!\n");
+        free(novoGrafo);
+        return NULL;
+    }
+
+    strcpy(novoGrafo->nome, nome);
 
     // Aloca a lista de vértices do grafo.
     novoGrafo->vertices = (Vertice**)calloc(novoGrafo->limiteVertices, sizeof(Vertice*));
@@ -349,6 +376,11 @@ Edge addEdge(Graph g, Node from, Node to, Info info){
 
     novaAresta->destino = to;
     novaAresta->dados = info;
+    novaAresta->ativa = true;
+    novaAresta->boundingBox.x = 1;
+    novaAresta->boundingBox.y = 1;
+    novaAresta->boundingBox.w = 1;
+    novaAresta->boundingBox.h = 1;
 
     Aresta *auxiliar =  grafo->vertices[from]->adjacentes;
 
@@ -566,7 +598,7 @@ void adjacentNodes(Graph g, Node node, Lista nosAdjacentes){
     Aresta *auxiliar = grafo->vertices[node]->adjacentes;
 
     while(auxiliar != NULL){
-        inserirInicioLista(nosAdjacentes, auxiliar->destino);
+        inserirInicioLista(nosAdjacentes, (void*)(intptr_t)auxiliar->destino);
         auxiliar = auxiliar->proxima;
     }
 
@@ -637,11 +669,150 @@ void getEdges(Graph g, Lista arestas){
 
 ////////////////////////////////////////////////////////////////////////////////////////
 
-// dfs
+// Função auxiliar.
+void calcularBbAresta(Edge e, double *x, double *y, double *w, double *h){
+
+    Aresta *aresta = (Aresta*)e;
+
+    *x = aresta->boundingBox.x;
+    *y = aresta->boundingBox.y;
+    *w = aresta->boundingBox.w;
+    *h = aresta->boundingBox.h;
+
+}
+
+
+// Função auxiliar.
+static void dfsAuxiliar(Graph g, Node node, int *tempo, int *visitado, int *descoberto, int *finalizado, procEdge treeEdge , procEdge forwardEdge, procEdge returnEdge, procEdge crossEdge, void *extra){
+
+    Grafo *grafo = (Grafo*)g;
+
+    visitado[node] = DESCOBERTO;
+    descoberto[node] = ++(*tempo);
+
+    Aresta *auxiliar = grafo->vertices[node]->adjacentes;
+
+    while(auxiliar != NULL){
+        if(auxiliar->ativa == false){
+            auxiliar = auxiliar->proxima;
+            continue;
+        }
+
+        Node destino = auxiliar->destino;
+
+        if(visitado[destino] == NAO_VISITADO){
+            if(treeEdge != NULL && !treeEdge(g, auxiliar, *tempo, *tempo, extra)){
+                return;
+            }
+            dfsAuxiliar(g, destino, tempo, visitado, descoberto, finalizado, treeEdge, forwardEdge, returnEdge, crossEdge, extra);
+        }else if(visitado[destino] == DESCOBERTO){
+            if(returnEdge != NULL && !returnEdge(g, auxiliar, *tempo, *tempo, extra)){
+                return;
+            }
+        }else if(visitado[destino] == FINALIZADO){
+            if(crossEdge != NULL && !crossEdge(g, auxiliar, *tempo, *tempo, extra)){
+                return;
+            }
+        }
+
+        auxiliar = auxiliar->proxima;
+    }
+
+    visitado[node] = FINALIZADO;
+    finalizado[node] = ++(*tempo);
+    
+}
+
+// Levando em consideração: 0 - não visitado; 1 - descoerto; 2 - finalizado.
+
+bool dfs(Graph g, Node node, procEdge treeEdge, procEdge forwardEdge, procEdge returnEdge, procEdge crossEdge, dfsRestarted newTree, void *extra){
+
+    Grafo *grafo = (Grafo*)g;
+
+    int *vetorVisitado = (int*)calloc(grafo->qtdVertices, sizeof(int));
+    int *vetorDescoberto = (int*)calloc(grafo->qtdVertices, sizeof(int));
+    int *vetorFinalizado = (int*)calloc(grafo->qtdVertices, sizeof(int));
+    int tempo = 0, i;
+
+    if(vetorVisitado == NULL || vetorDescoberto == NULL || vetorFinalizado == NULL){
+        printf("Erro: Falha nas alocacoes dos vetores para busca dfs no grafo!\n");
+        return false;
+    }
+
+    for(i = 0; i < grafo->qtdVertices; i++){
+        if(vetorVisitado[i] == NAO_VISITADO){
+            if(newTree != NULL && !newTree(g, extra)){
+                free(vetorVisitado);
+                free(vetorDescoberto);
+                free(vetorFinalizado);
+                return false;
+            }
+            dfsAuxiliar(g, i, &tempo, vetorVisitado, vetorDescoberto, vetorFinalizado, treeEdge, forwardEdge, returnEdge, crossEdge, extra);
+        }
+
+    }
+    
+    free(vetorVisitado);
+    free(vetorFinalizado);
+    free(vetorDescoberto);
+
+    return true;
+
+}
 
 ////////////////////////////////////////////////////////////////////////////////////////
 
-// bfs
+bool bfs(Graph g, Node node, procEdge discoverNode, void *extra){
+
+    Grafo *grafo = (Grafo*)g;
+
+    int *vetorVisitado = (int*)calloc(grafo->qtdVertices, sizeof(int));
+
+    if(vetorVisitado == NULL){
+        printf("Erro: Falha na alocacao de memoria para o vetor para a busca bfs do grafo!\n");
+        return false;
+    }
+
+    FilaGenerica fila = criarFila();
+    int tempo = 0;
+
+    vetorVisitado[node] = 1;
+    enfileirar(fila, node);
+
+    while(filaVazia(fila) == false){
+        Node id = desenfileirar(fila);
+        Aresta *auxiliar = grafo->vertices[id]->adjacentes;
+
+        while(auxiliar != NULL){
+            if(auxiliar->ativa == false){
+                auxiliar = auxiliar->proxima;
+                continue;
+            }
+
+            Node destino = auxiliar->destino;
+
+            if(vetorVisitado[destino] == 0){
+                vetorVisitado[destino] = 1;
+                if(discoverNode != NULL && !discoverNode(g, auxiliar, tempo, tempo, extra)){
+                    desalocarFila(fila);
+                    free(vetorVisitado);
+                    return false;
+                }
+                enfileirar(fila, destino);
+            }
+
+            auxiliar = auxiliar->proxima;
+        }
+
+        vetorVisitado[id] = 2;
+    }
+
+    desalocarFila(fila);
+    free(vetorVisitado);
+
+    return true;
+
+}
 
 ////////////////////////////////////////////////////////////////////////////////////////
 
@@ -684,28 +855,7 @@ void killDG(Graph g){
 ////////////////////////////////////////////////////////////////////////////////////////
 
 // Função auxiliar.
-static bool preencherVetor(Graph g, Node vetor[], int nVert, char *nomesVerts[]){
-
-    int i;
-    Node id;
-
-    for(i = 0; i < nVert; i++){
-        id = getNode(g, nomesVerts[i]);
-
-        if(id == -1){
-            printf("Erro: O vetor auxiliar nao foi preenchido pois o vertice nao foi encontrado no grafo!\n");
-            return false;
-        }
-
-        vetor[i] = id;
-    }
-
-    return true;
-
-}
-
-// Função auxiliar.
-static bool estaNoVetor(Node id, Node vetor[], int nVert){
+static bool estaNoVetorIds(Node id, Node vetor[], int nVert){
 
     int i;
 
@@ -717,6 +867,119 @@ static bool estaNoVetor(Node id, Node vetor[], int nVert){
 
     return false;
     
+}
+
+// Função auxiliar.
+static Vertice *buscarEstruturaVertice(Graph g, Node n){
+
+    Grafo *grafo = (Grafo*)g;
+
+    if(n < 0 || n >= grafo->qtdVertices){
+        printf("Erro: Falha na busca do vertice do grafo pelo seu id!\n");
+        return NULL;
+    }
+
+    return grafo->vertices[n];
+
+}
+
+// Função auxiliar.
+static bool preencherVetorIds(Graph g, Node vetor[], int nVert, char *nomesVerts[]){
+
+    int i;
+    Node id;
+
+    for(i = 0; i < nVert; i++){
+        id = getNode(g, nomesVerts[i]);
+
+        if(id == -1){
+            printf("Erro: O vetor auxiliar de id dos vertices nao foi preenchido pois o vertice nao foi encontrado no grafo!\n");
+            return false;
+        }
+
+        vetor[i] = id;
+    }
+
+    return true;
+
+}
+
+// Função auxiliar.
+static bool preencherVetorVertices(Graph g, Vertice *vetor[], int nVert, char *nomesVerts[]){
+
+    int i;
+    Vertice *vertice;
+    Node id;
+
+    for(i = 0; i < nVert; i++){
+        id = getNode(g, nomesVerts[i]);
+        vertice = buscarEstruturaVertice(g, id);
+
+        if(vertice == NULL){
+            printf("Erro: O vetor auxiliar de vertices nao foi preenchido pois o vertice nao foi encontrado no grafo!\n");
+            return false;
+        }
+
+        vetor[i] = vertice;
+    }
+
+    return true;
+}
+
+// Função auxiliar.
+static void preencherVerticesSubgrafos(Graph g, char *nomeSubgrafo, Vertice *vetor[], int nVert){
+
+    // Acesso para os campos da struct Grafo. 
+    Grafo *grafo = (Grafo*)g;
+
+    Subgrafo *subgrafo = buscarElementoTabela(grafo->subgrafos, nomeSubgrafo);
+
+    if(subgrafo == NULL){
+        printf("Erro: Falha ao colocar os vertices no subgrafo do grafo!\n");
+        return;
+    }
+
+    int i;
+
+    for(i = 0; i < nVert; i++){
+        subgrafo->vertices[i] = vetor[i];
+        subgrafo->qtdVertices++;
+    }
+
+}
+
+// Função auxiliar.
+static void preencherArestasSubgrafos(Graph g, char *nomeSubgrafo, Node vetor[], int nVert){
+
+    // Acesso para os campos da struct Grafo. 
+    Grafo *grafo = (Grafo*)g;
+    
+    Subgrafo *subgrafo = buscarElementoTabela(grafo->subgrafos, nomeSubgrafo);
+
+    if(subgrafo == NULL){
+        printf("Erro: Falha ao colocar as arestas no subgrafo do grafo!\n");
+        return;
+    }
+
+    int i, j;
+    Aresta *auxiliar;
+
+    for(i = 0; i < grafo->qtdVertices; i++){
+            if(estaNoVetorIds(grafo->vertices[i]->id, vetor, nVert) == true){
+                auxiliar = grafo->vertices[i]->adjacentes;
+                while(auxiliar != NULL){
+                    for(j = 0; j < nVert; j++){
+                        if(auxiliar->destino == vetor[j]){
+                            subgrafo->arestas[subgrafo->qtdArestas] = auxiliar;
+                            subgrafo->qtdArestas++;
+                            break;
+                        }
+                    }
+                    auxiliar = auxiliar->proxima;
+                }
+            }
+        }
+
 }
 
 void createSubgraphDG(Graph g, char *nomeSubgrafo, char *nomesVerts[], int nVert, bool comArestas){
@@ -738,53 +1001,57 @@ void createSubgraphDG(Graph g, char *nomeSubgrafo, char *nomesVerts[], int nVert
         return;
     }
 
-    /* Preenche os demais campos do subgrafo. */
-
-    novoSubgrafo->nome = (char*)malloc(strlen(nomeSubgrafo) + 1);
-
-    if(novoSubgrafo->nome == NULL){
-        printf("Erro: Falha na alocacao de memoria para a atribuicao do nome do subgrafo!\n");
+    novoSubgrafo->arestas = (Aresta**)calloc(grafo->qtdArestas, sizeof(Aresta*));
+    if(novoSubgrafo->arestas == NULL){
+        printf("Erro: Falha na alocacao de memoria para as arestas do subgrafo!\n");
         free(novoSubgrafo);
         return;
     }
 
+    novoSubgrafo->vertices = (Vertice**)calloc(grafo->limiteVertices, sizeof(Vertice*));
+    if(novoSubgrafo->vertices == NULL){
+        printf("Erro: Falha na alocacao de memoria para os vertices do subgrafo!\n");
+        free(novoSubgrafo->arestas);
+        free(novoSubgrafo);
+        return;
+    }
+
+    /* Preenche os demais campos do subgrafo. */
+
+    novoSubgrafo->nome = (char*)malloc(strlen(nomeSubgrafo) + 1);
+    if(novoSubgrafo->nome == NULL){
+        printf("Erro: Falha na alocacao de memoria para a atribuicao do nome do subgrafo!\n");
+        free(novoSubgrafo->vertices);
+        free(novoSubgrafo->arestas);
+        free(novoSubgrafo);
+        return;
+    }
     strcpy(novoSubgrafo->nome, nomeSubgrafo);
+
     novoSubgrafo->qtdArestas = 0;
-    novoSubgrafo->arestas = criarTabela(211);
+    novoSubgrafo->qtdVertices = 0;
 
     int i, j;
     Node vetorIds[nVert];
+    Vertice *vetorVertices[nVert];
     Aresta *auxiliar;  
-    char chave[50];
 
-    if(preencherVetor(g, vetorIds, nVert, nomesVerts) == false){
+    if(preencherVetorIds(g, vetorIds, nVert, nomesVerts) == false || preencherVetorVertices(g, vetorVertices, nVert, nomesVerts) == false){
         free(novoSubgrafo->nome);
-        desalocarTabela(novoSubgrafo->arestas);
+        free(novoSubgrafo->arestas);
+        free(novoSubgrafo->vertices);
         free(novoSubgrafo);
         return;
     }
 
     /* Verifica se o subgrafo conterá arestas. */
     if(comArestas == true){
-        /* Se sim, for percorre a lista de vértices do grafo. */
-        for(i = 0; i < grafo->qtdVertices; i++){
-            if(estaNoVetor(grafo->vertices[i]->id, vetorIds, nVert) == true){
-                auxiliar = grafo->vertices[i]->adjacentes;
-                while(auxiliar != NULL){
-                    for(j = 0; j< nVert; j++){
-                        if(auxiliar->destino == vetorIds[j]){
-                            snprintf(chave, "%d-%d", grafo->vertices[i]->id, auxiliar->destino);
-                            if(buscarElementoTabela(novoSubgrafo->arestas, chave) == NULL){
-                                inserirElementoTabela(novoSubgrafo->arestas, chave, auxiliar);
-                                novoSubgrafo->qtdArestas++;
-                            }
-                            break;
-                        }
-                    }
-                    auxiliar = auxiliar->proxima;
-                }
-            }
-        }
+        preencherArestasSubgrafos(g, novoSubgrafo->nome, vetorIds, nVert);
+        preencherVerticesSubgrafos(g, novoSubgrafo->nome, vetorVertices, nVert);
+
+    }else{
+        preencherVerticesSubgrafos(g, novoSubgrafo->nome, vetorVertices, nVert);
+        // As arestas ficam NULL (calloc).
     }
 
     inserirElementoTabela(grafo->subgrafos, nomeSubgrafo, novoSubgrafo);
@@ -806,17 +1073,8 @@ Edge includeEdgeSDG(Graph g, char *nomeSubgrafo, Edge e){
         return NULL;
     }
 
-    char chave[50];
-    Node origem = getFromNode(g, e), destino = getToNode(g, e);
-
-    snprintf(chave, "%d-%d", origem, destino);
-
-    if(buscarElementoTabela(subgrafo->arestas, chave) == NULL){
-        inserirElementoTabela(subgrafo->arestas, chave, e);
-        subgrafo->qtdArestas++;
-    }else{
-        printf("Aviso: A aresta nao foi inserida pois ja existe no subgrafo!\n");
-    }
+    subgrafo->arestas[subgrafo->qtdArestas] = e;
+    subgrafo->qtdArestas++;
 
     return e;
 
@@ -830,14 +1088,11 @@ bool existsEdgeSDG(Graph g, char *nomeSubgrafo, Edge e){
     Grafo *grafo = (Grafo*)g;
 
     Subgrafo *subgrafo = buscarElementoTabela(grafo->subgrafos, nomeSubgrafo);
+    Aresta *auxiliar;
+    int i;
 
-    if(subgrafo != NULL){
-        Node origem = getFromNode(g, e), destino = getToNode(g, e);
-        char chave[50];
-
-        snprintf(chave, "%d-%d", origem, destino);
-
-        if(buscarElementoTabela(subgrafo->arestas, chave) != NULL){
+    for(i = 0; i < subgrafo->qtdArestas; i++){
+        if(subgrafo->arestas[i] == e){
             return true;
         }
     }
@@ -854,15 +1109,21 @@ void excludeEdgeSDG(Graph g, char *nomeSubgrafo, Edge e){
 
     Subgrafo *subgrafo = buscarElementoTabela(grafo->subgrafos, nomeSubgrafo);
 
-    if(subgrafo != NULL){
-        Node origem = getFromNode(g, e), destino = getToNode(g, e);
-        char chave[50];
+    if(subgrafo == NULL){
+        printf("Aviso: O subgrafo nao foi encontrado no grafo!\n");
+        return;
+    }
 
-        snprintf(chave, "%d-%d", origem, destino);
+    int i, j;
 
-        if(buscarElementoTabela(subgrafo->arestas, chave) != NULL){
-            removerElementoTabela(subgrafo->arestas, chave);
+    for(i = 0; i < subgrafo->qtdArestas; i++){
+        if(subgrafo->arestas[i] == e){
+            for(j = i; j < subgrafo->qtdArestas - 1; j++){
+                subgrafo->arestas[j] = subgrafo->arestas[j + 1];
+            }
             subgrafo->qtdArestas--;
+            break;
+            // Sem dar free porque é subgrafo.
         }
     }
 
@@ -880,12 +1141,12 @@ void adjacentEdgesSDG(Graph g, char *nomeSubgrafo, Node node, Lista arestasAdjac
     }
 
     Subgrafo *subgrafo = buscarElementoTabela(grafo->subgrafos, nomeSubgrafo);
+    Aresta *auxiliar = subgrafo->vertices[node]->adjacentes;
 
-    if(subgrafo != NULL){
-        int i;
-        Aresta *auxiliar = buscarElementoTabela(subgrafo->arestas, /*?*/);
+    while(auxiliar != NULL){
+        inserirInicioLista(arestasAdjacentes, auxiliar);
+        auxiliar = auxiliar->proxima;
     }
-
 
 }
 
@@ -895,16 +1156,11 @@ void getAllNodesSDG(Graph g, char *nomeSubgrafo, Lista lstNodes){
 
     Grafo *grafo = (Grafo*)g;
 
-    int i, j;
+    Subgrafo *subgrafo = buscarElementoTabela(grafo->subgrafos, nomeSubgrafo);
+    int i;
 
-    for(i = 0; i < grafo->qtdSubgrafos; i++){
-        if(strcmp(grafo->subgrafos[i]->nome, nomeSubgrafo) == 0){
-            for(j = 0; j < grafo->subgrafos[i]->qtdArestas; j++){  
-                /* Pode repetidos? */
-                inserirInicioLista(lstNodes, grafo->subgrafos[i]->arestas[j]->origem);
-                inserirInicioLista(lstNodes, grafo->subgrafos[i]->arestas[j]->destino);  
-            }
-        }
+    for(i = 0; i < subgrafo->qtdVertices; i++){
+        inserirInicioLista(lstNodes, subgrafo->vertices[i]);
     }
 
 }
@@ -914,109 +1170,90 @@ void getAllNodesSDG(Graph g, char *nomeSubgrafo, Lista lstNodes){
 void getAllEdgesSDG(Graph g, char *nomeSubgrafo, Lista lstEdges){
 
     Grafo *grafo = (Grafo*)g;
+    
+    Subgrafo *subgrafo = buscarElementoTabela(grafo->subgrafos, nomeSubgrafo);
+    int i;
 
-    int i, j;
-
-    for(i = 0; i < grafo->qtdSubgrafos; i++){
-        if(strcmp(grafo->subgrafos[i]->nome, nomeSubgrafo) == 0){
-            for(j = 0; j < grafo->subgrafos[i]->qtdArestas; j++){
-                inserirInicioLista(lstEdges, grafo->subgrafos[i]->arestas[j]);
-            }
-        }
+    for(i = 0; i < subgrafo->qtdVertices; i++){
+        inserirInicioLista(lstEdges, subgrafo->arestas[i]);
     }
 
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////
 
-/* Função auxiliar */
-static Vertice *buscarVerticePorId(Graph g, Node n){
-
-    Grafo *grafo = (Grafo*)g;
-
-    int i;
-
-    for(i = 0; i < grafo->qtdVertices; i++){
-        if(grafo->vertices[i]->id == n){
-            return grafo->vertices[i];
-        }
-    }
-
-    return NULL;
-
-}
-
 Graph produceGraph(Graph g, char *nomeSubgrafo){
 
     Grafo *grafo = (Grafo*)g;
 
-    int i, j, k;
+    Subgrafo *subgrafo = buscarElementoTabela(grafo->subgrafos, nomeSubgrafo);
 
-    for(i = 0; i < grafo->qtdSubgrafos; i++){
-        if(strcmp(grafo->subgrafos[i]->nome, nomeSubgrafo) == 0){
-
-            Grafo *novoGrafo = (Grafo*)malloc(sizeof(Grafo));
-
-            if(novoGrafo == NULL){
-                printf("Erro: Falha na alocacao de memoria para a criacao do grafo a partir do subgrafo!\n");
-                return NULL;
-            }
-            
-            novoGrafo->qtdArestas = grafo->subgrafos[i]->qtdArestas;
-            novoGrafo->arestas = (Aresta**)malloc(novoGrafo->qtdArestas * sizeof(Aresta*));
-
-            if(novoGrafo->arestas == NULL){
-                printf("Erro: Falha na alocacao de memoria para a criacao da lista de arestas do novo grafo a partir do subgrafo!\n");
-                return NULL;
-            }
-
-            novoGrafo->qtdVertices = 0;
-            novoGrafo->vertices = NULL;
-
-            for(j = 0; j < novoGrafo->qtdArestas; j++){
-                novoGrafo->arestas[j] = grafo->subgrafos[i]->arestas[j];
-
-                for(k = 0; k < novoGrafo->qtdVertices; k++){
-                    if(novoGrafo->arestas[k]->origem != grafo->subgrafos[i]->arestas[j]->origem){
-
-                        novoGrafo->vertices = (Vertice**)realloc(novoGrafo->vertices, (novoGrafo->qtdVertices + 1) * sizeof(Vertice*));
-
-                        if(novoGrafo->vertices == NULL){
-                            printf("Erro: Falha na alocacao de memoria para a criacao da lista de vertices do novo grafo a partir do subgrafo!\n");
-                            return NULL;
-                        }
-
-                        novoGrafo->vertices[novoGrafo->qtdVertices] = buscarVerticePorId(g, grafo->subgrafos[i]->arestas[j]->origem);
-                        novoGrafo->qtdVertices++;
-
-                    }
-
-                    if(novoGrafo->arestas[k]->destino != grafo->subgrafos[i]->arestas[j]->destino){
-
-                        novoGrafo->vertices = (Vertice**)realloc(novoGrafo->vertices, (novoGrafo->qtdVertices + 1) * sizeof(Vertice*));
-
-                        if(novoGrafo->vertices == NULL){
-                            printf("Erro: Falha na alocacao de memoria para a criacao da lista de vertices do novo grafo a partir do subgrafo!\n");
-                            return NULL;
-                        }
-
-                        novoGrafo->vertices[novoGrafo->qtdVertices] = buscarVerticePorId(g, grafo->subgrafos[i]->arestas[j]->destino);
-                        novoGrafo->qtdVertices++;
-                    }
-                }
-
-            }
-
-            novoGrafo->subgrafos = NULL;
-            novoGrafo->qtdSubgrafos = 0;
-            novoGrafo->limiteVertices = grafo->limiteVertices;
-            novoGrafo->direcionado = grafo->direcionado;
-            
-            return novoGrafo;
-        }
-        
+    if(subgrafo == NULL){
+        printf("Aviso: O subgrafo nao foi encontrado no grafo!\n");
+        return NULL;
     }
 
-    return NULL;
+    Grafo *novoGrafo = (Grafo*)malloc(sizeof(Grafo));
+
+    if(novoGrafo == NULL){
+        printf("Erro: Falha na alocacao de memoria para a criacao do grafo a partir do subgrafo!\n");
+        return NULL;
+    }
+
+    novoGrafo->direcionado = grafo->direcionado;
+    novoGrafo->limiteVertices = grafo->limiteVertices;
+
+    novoGrafo->nome = (char*)malloc(strlen(nomeSubgrafo) + 1);
+
+    if(novoGrafo->nome == NULL){
+        printf("Erro: Falha na alocacao de memoria para o nome do grafo a partir do subgrafo!\n");
+        free(novoGrafo);
+        return NULL;
+    }
+
+    novoGrafo->vertices = (Vertice**)calloc(subgrafo->qtdVertices, sizeof(Vertice*));
+
+    if(novoGrafo->vertices == NULL){
+        printf("Erro: Falha na alocacao de memoria para a lista de vertices do grafo a partir do subgrafo!\n");
+        free(novoGrafo->nome);
+        free(novoGrafo);
+        return NULL;
+    }
+
+    int i;
+
+    for(i = 0; i < subgrafo->qtdVertices; i++){
+        Vertice *novoVertice = subgrafo->vertices[i];
+        addNode(novoGrafo, novoVertice->nome, novoVertice->dados);
+    }
+
+    for(i = 0; i < subgrafo->qtdArestas; i++){
+        // arrumar aqui depois
+    }
+
+    novoGrafo->qtdSubgrafos = 0;
+    novoGrafo->subgrafos = criarTabela(211);
+
+    return novoGrafo;
+    
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+
+void ativarAresta(Graph g, Edge e){
+
+    Aresta *aresta = (Aresta*)e;
+
+    aresta->ativa = true;
+
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+
+void desativarAresta(Graph g, Edge e){
+
+    Aresta *aresta = (Aresta*)e;
+
+    aresta->ativa = false;
     
 }
