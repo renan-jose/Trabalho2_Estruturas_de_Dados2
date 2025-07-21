@@ -1,5 +1,3 @@
-// Testando integração vscode com github
-
 /*
  * Um Grafo G é constituído por um conjunto de vértices V e um conjunto de arestas E, denotado por G=(V,E). 
  *
@@ -34,11 +32,11 @@ typedef void *Info;
 
 /* Invocado quando uma aresta é "descoberta"/"percorrida"/"classificada". 
  * Também informa os tempos de descoberta e finalização. */
-bool (*procEdge)(Graph g, Edge e,int td, int tf, void *extra); 
+typedef bool (*procEdge)(Graph g, Edge e,int td, int tf, void *extra); 
 
 
 /* Invocado quando percurso é recomeçado. */
-bool (*dfsRestarted)(Graph g, void *extra);
+typedef bool (*dfsRestarted)(Graph g, void *extra);
 
 
 /* Cria um grafo com, no máximo, "nVert" vértices. 
@@ -242,20 +240,19 @@ void getEdges(Graph g, Lista arestas);
 
 
 /*
-   Faz percurso em profundidade sobre g, a partir do no' node, classificando 
+   Faz percurso em profundidade sobre g, a partir do nó node, classificando 
    as arestas do grafo, invocando a respectiva funcao.
       A busca em profundidade, eventualmente, pode produzir uma floresta.
    newTree e' invocada sempre que o percurso for retomado.
  */  
-bool dfs(Graph g, Node node, procEdge treeEdge, forwardEdge, returnEdge,
-	 crossEdge, newTree, void *extra);
+bool dfs(Graph g, Node node, procEdge treeEdge, procEdge forwardEdge, procEdge returnEdge, procEdge crossEdge, dfsRestarted newTree, void *extra);
 
 
 /*
    Percorre o grafo g em largura, a partir do no' node. discoverNode e' usada
    para a aresta (x,y) usada para "descobrir" o y.
  */
-bool bfs(Graph g, node, discoverNode, void *extra);
+bool bfs(Graph g, Node node, procEdge discoverNode, void *extra);
 
 
 /* Desaloca a memória usada pelo grafo g.
@@ -333,7 +330,7 @@ void excludeEdgeSDG(Graph g, char *nomeSubgrafo, Edge e);
  */
 void adjacentEdgesSDG(Graph g, char *nomeSubgrafo, Node node, Lista arestasAdjacentes);
 
-
+  
 /* Adiciona a lista lstNodes os vértices do subgrafo nomeSubgrafo.
  * Parâmetros: 
  *    - g = grafo (tipo Graph);
@@ -364,5 +361,12 @@ void getAllEdgesSDG(Graph g, char *nomeSubgrafo, Lista lstEdges);
  *    - novo grafo (tipo Graph)
  */
 Graph produceGraph(Graph g, char *nomeSubgrafo);
+
+/* Explicar depois. */
+void ativarAresta(Graph g, Edge e);
+
+
+/* Explicar depois */
+void desativarAresta(Graph g, Edge e);
 
 #endif 
