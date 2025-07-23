@@ -24,28 +24,9 @@
 typedef void* ArvoreGenerica; /* ArvoreGenerica representa uma árvore no todo. */
 typedef void* ParametrosGenericos; /* ParametrosGenericos representa os parâmetros da linha de comando. */
 
+#include <stdbool.h>
+
 /* Gerações/Criações de arquivos e parâmetros */
-
-/* Gera um arquivo SVG com a representação gráfica das formas.
- * Parâmetros:
- * - ArvoreGenerica: árvore contendo as formas.
- * - char *: caminho completo do arquivo de saída (.svg).
- */
-void gerarArquivoSvg(ArvoreGenerica, char *);
-
-/* Gera um arquivo DOT com a estrutura da árvore.
- * Parâmetros:
- * - ArvoreGenerica: árvore a ser representada como grafo.
- * - char *: caminho completo do arquivo de saída (.dot).
- */
-void gerarArquivoDot(ArvoreGenerica, char *);
-
-/* Gera um arquivo CSV com dados tabulares das formas.
- * Parâmetros:
- * - ArvoreGenerica: árvore contendo as formas.
- * - char *: caminho completo do arquivo de saída (.csv).
- */
-void gerarArquivoCsv(ArvoreGenerica, char *);
 
 /* Cria e inicializa a estrutura de parâmetros.
  * Retorno:
@@ -143,45 +124,12 @@ char *buscarCaminhoSvgConsulta(ParametrosGenericos);
  */
 char *buscarCaminhoTxtConsulta(ParametrosGenericos);
 
-/* Retorna o valor da prioridade máxima definido.
- * Parâmetros:
- * - ParametrosGenericos: objeto de parâmetros.
- * Retorno:
- * - int: valor da prioridade máxima.
- */
-int buscarPrioridadeMax(ParametrosGenericos);
 
-/* Retorna o número de hits necessários para promover um nó.
- * Parâmetros:
- * - ParametrosGenericos: objeto de parâmetros.
- * Retorno:
- * - int: hit count.
- */
-int buscarHitCount(ParametrosGenericos);
+char *buscarNomeGrafo(ParametrosGenericos);
 
-/* Retorna o fator de promoção (promotion rate) dos nós.
- * Parâmetros:
- * - ParametrosGenericos: objeto de parâmetros.
- * Retorno:
- * - double: promotion rate.
- */
-double buscarPromotionRate(ParametrosGenericos);
+int buscarLimiteVertices(ParametrosGenericos);
 
-/* Gera o caminho completo do arquivo .dot pós-geo.
- * Parâmetros:
- * - ParametrosGenericos: objeto de parâmetros.
- * Retorno:
- * - char *: caminho do arquivo .dot (string alocada dinamicamente).
- */
-char *buscarCaminhoDotBase(ParametrosGenericos);
-
-/* Gera o caminho completo do arquivo .dot pós-qry.
- * Parâmetros:
- * - ParametrosGenericos: objeto de parâmetros.
- * Retorno:
- * - char *: caminho do arquivo .dot (string alocada dinamicamente) ou NULL.
- */
-char *buscarCaminhoDotConsulta(ParametrosGenericos);
+bool buscarDirecionado(ParametrosGenericos);
 
 /* Utilitários */
 
@@ -208,5 +156,11 @@ int processarArgumentos(ParametrosGenericos, int, char *[]);
  * - ParametrosGenericos: objeto a ser destruído.
  */
 void desalocarParametros(ParametrosGenericos);
+
+int temArquivoVia(ParametrosGenericos);
+
+char *buscarArquivoVia(ParametrosGenericos);
+
+char *buscarCaminhoCompletoVia(ParametrosGenericos);
 
 #endif /* _ARQUIVO_H_ */
