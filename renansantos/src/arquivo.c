@@ -10,128 +10,13 @@
 
 struct Parametros{
 
-    char *diretorioEntrada, *arquivoGeo, *diretorioSaida, *arquivoQry; 
-    int prioridadeMaxima, hitCount;
-    double promotionRate; 
+    char *diretorioEntrada, *arquivoGeo, *diretorioSaida, *arquivoQry, *nomeGrafo, *arquivoVia;
+    int limiteVertices;
+    bool direcionado;
 
 };
 
 typedef struct Parametros Parametros;
-
-/*****************************************************************************************************/
-
-void gerarArquivoSvg(ArvoreGenerica t, char *nome){
-
-    FILE* arquivoSvg = fopen(nome, "w");
-
-    if(arquivoSvg == NULL){
-        printf("Erro: Falha ao gerar o svg de saida!\n");
-        return;
-    }
-
-    tagCabecalho(arquivoSvg);
-
-    visitaProfundidadeSmuT(t, tagForma, arquivoSvg); /* Uso do percurso em profundidade para impressão da árvore em svg. */
-
-    tagRodape(arquivoSvg);
-
-    fclose(arquivoSvg);
-
-}
-
-/*****************************************************************************************************/
-
-void gerarArquivoDot(ArvoreGenerica t, char* nome){
-
-    printDotSmuTreap(t, nome);
-
-}
-
-/*****************************************************************************************************/
-
-/* Função auxiliar */
-static void escreverCsv(ArvoreGenerica t, NoGenerico n, FormaGeometricaGenerica f, double x, double y, void* aux){
-    
-    FILE* arquivo = (FILE*) aux;
-    char tipo = buscarTipoFormaGeometrica(f);
-
-    switch (tipo) {
-        case 'r':
-            fprintf(arquivo, "retangulo, %d, %lf, %lf, %lf, %lf, %s, %s\n",
-                    buscarIdFormaGeometrica(f),
-                    buscarCoordXFormaGeometrica(f),
-                    buscarCoordYFormaGeometrica(f),
-                    buscarLarguraRetangulo(buscarFormaGeometrica(f)),
-                    buscarAlturaRetangulo(buscarFormaGeometrica(f)),
-                    buscarCorBordaRetangulo(buscarFormaGeometrica(f)),
-                    buscarCorPreenchimentoRetangulo(buscarFormaGeometrica(f)));
-            break;
-
-        case 'c':
-            fprintf(arquivo, "circulo, %d, %lf, %lf, %lf, %s, %s\n",
-                    buscarIdFormaGeometrica(f),
-                    buscarCoordXFormaGeometrica(f),
-                    buscarCoordYFormaGeometrica(f),
-                    buscarRaioCirculo(buscarFormaGeometrica(f)),
-                    buscarCorBordaCirculo(buscarFormaGeometrica(f)),
-                    buscarCorPreenchimentoCirculo(buscarFormaGeometrica(f)));
-            break;
-
-        case 'l':
-            fprintf(arquivo, "linha, %d, %lf, %lf, %lf, %lf, %s\n",
-                    buscarIdFormaGeometrica(f),
-                    buscarX1Linha(buscarFormaGeometrica(f)),
-                    buscarY1Linha(buscarFormaGeometrica(f)),
-                    buscarX2Linha(buscarFormaGeometrica(f)),
-                    buscarY2Linha(buscarFormaGeometrica(f)),
-                    buscarCorLinha(buscarFormaGeometrica(f)));
-            break;
-
-        case 't':
-            fprintf(arquivo, "texto, %d, %lf, %lf, %s, %s, %c, \"%s\"\n",
-                    buscarIdFormaGeometrica(f),
-                    buscarCoordXFormaGeometrica(f),
-                    buscarCoordYFormaGeometrica(f),
-                    buscarCorBordaTexto(buscarFormaGeometrica(f)),
-                    buscarCorPreenchimentoTexto(buscarFormaGeometrica(f)),
-                    buscarPeriodoAncoraTexto(buscarFormaGeometrica(f)),
-                    buscarTextoTexto(buscarFormaGeometrica(f)));
-            break;
-    }
-}
-
-/*****************************************************************************************************/
-
-void gerarArquivoCsv(ArvoreGenerica t, char *nome){
-
-    FILE* arquivoCsv = fopen(nome, "w");
-
-    if (arquivoCsv == NULL) {
-        printf("Erro: Falha ao gerar o csv de saida!\n");
-        return;
-    }
-
-    visitaProfundidadeSmuT(t, escreverCsv, arquivoCsv);
-    
-    fclose(arquivoCsv);
-
-}
-
-static int strcasecmp(char *s1, char *s2){
-
-    while (*s1 && *s2){
-        int c1 = (*s1 >= 'A' && *s1 <= 'Z') ? *s1 + 32 : *s1;
-        int c2 = (*s2 >= 'A' && *s2 <= 'Z') ? *s2 + 32 : *s2;
-        if(c1 != c2){
-            return c1 - c2;
-        }
-        s1++;
-        s2++;
-    }
-
-    return *s1 - *s2;
-
-}
 
 /*****************************************************************************************************/
 
@@ -223,9 +108,6 @@ static char* extrairNomeBase(char *arquivo){
 static int processar_argumentos_interno(int argc, char *argv[], Parametros *p) {
     
     memset(p, 0, sizeof(Parametros));
-    p->prioridadeMaxima = 10000;
-    p->hitCount = 3;
-    p->promotionRate = 1.10;
     
     if(argc < 5){ 
         fprintf(stderr, "Erro: Argumentos insuficientes!\n");
@@ -309,53 +191,23 @@ static int processar_argumentos_interno(int argc, char *argv[], Parametros *p) {
 
             strcpy(p->arquivoQry, argv[i + 1]);
             i++; 
-        }
-        else if(strcmp(argv[i], "-p") == 0){
-            if (i + 1 >= argc) {
-                fprintf(stderr, "Erro: -p antecede um numero inteiro!\n");
+        }else if(strcmp(argv[i], "-v") == 0){
+            if(i + 1 >- argc){
+                fprintf(stderr, "Erro: -v antecede um argumento!\n");
+                return 0;
+            }
+            if(!verificarExtensao(argv[i + 1], ".via")){
+                fprintf(stderr, "Erro: Arquivo de vias deve ter extensao .via!\n");
                 return 0;
             }
 
-            int valor = atoi(argv[i + 1]);
-
-            if(valor <= 0){
-                fprintf(stderr, "Erro: -p deve ser um numero inteiro positivo!\n");
+            p->arquivoVia = malloc(stlen(argv[i + 1]) + 1);
+            if(!p->arquivoVia){
+                fprintf(stderr, "Erro: Falha na alocacao de memoria para o arquivo .via!\n");
                 return 0;
             }
 
-            p->prioridadeMaxima = valor;
-            i++;
-        }
-        else if(strcmp(argv[i], "-hc") == 0){
-            if(i + 1 >= argc){
-                fprintf(stderr, "Erro: -hc antecede um numero inteiro!\n");
-                return 0;
-            }
-
-            int valor = atoi(argv[i + 1]);
-
-            if(valor <= 0){
-                fprintf(stderr, "Erro: -hc deve ser um numero inteiro positivo!\n");
-                return 0;
-            }
-
-            p->hitCount = valor;
-            i++;
-        }
-        else if(strcmp(argv[i], "-pr") == 0){
-            if(i + 1 >= argc){
-                fprintf(stderr, "Erro: -pr antecede um numero decimal\n");
-                return 0;
-            }
-
-            double valor = atof(argv[i + 1]);
-
-            if (valor <= 0.0) {
-                fprintf(stderr, "Erro: -pr deve ser um numero decimal positivo!\n");
-                return 0;
-            }
-
-            p->promotionRate = valor;
+            strcpy(p->arquivoVia, argv[i + 1]);
             i++;
         }
         else{
@@ -419,6 +271,22 @@ static int confirmarParametros(Parametros *p){
             return 0;
         }
         free(caminho_qry);
+    }
+
+    if(p->arquivoVia){
+        char *caminho_via = gerarCaminho(p->diretorioEntrada, p->arquivoVia);
+        if(!caminho_via){
+            fprintf(stderr, "Erro: Falha ao criar caminho do arquivo .via!\n");
+            return 0;
+        }
+
+        if(!arquivo_existe(caminho_via)){
+            fprintf(stderr, "Erro: Arquivo de vias .via '%s' nao encontrado!\n", caminho_via);
+            free(caminho_via);
+            return 0;
+        }
+
+        free(caminho_via);
     }
     
     char *teste_saida = gerarCaminho(p->diretorioSaida, "test.tmp");
@@ -485,6 +353,7 @@ void desalocarParametros(ParametrosGenericos p){
     free(parametros->diretorioSaida);
     free(parametros->arquivoGeo);
     free(parametros->arquivoQry);
+    free(parametros->arquivoVia);
     free(parametros);
 
 }
@@ -545,7 +414,7 @@ int temArquivoQry(ParametrosGenericos p){
 
 /*****************************************************************************************************/
 
-int buscarPrioridadeMax(ParametrosGenericos p){
+char *buscarNomeGrafo(ParametrosGenericos p){
 
     Parametros *parametros = (Parametros*)p;
 
@@ -553,13 +422,13 @@ int buscarPrioridadeMax(ParametrosGenericos p){
         return 10000;
     }
 
-    return parametros->prioridadeMaxima;
+    return parametros->nomeGrafo;
 
 }
 
 /*****************************************************************************************************/
 
-int buscarHitCount(ParametrosGenericos p){
+int buscarLimiteVertices(ParametrosGenericos p){
 
     Parametros *parametros = (Parametros*)p;
 
@@ -567,13 +436,13 @@ int buscarHitCount(ParametrosGenericos p){
         return 3;
     }
 
-    return parametros->hitCount;
+    return parametros->limiteVertices;
 
 }
 
 /*****************************************************************************************************/
 
-double buscarPromotionRate(ParametrosGenericos p){
+bool buscarDirecionado(ParametrosGenericos p){
 
     Parametros *parametros = (Parametros*)p;
 
@@ -581,7 +450,7 @@ double buscarPromotionRate(ParametrosGenericos p){
         return 1.10;
     }
 
-    return parametros->promotionRate;
+    return parametros->direcionado;
 
 }
 
@@ -727,58 +596,30 @@ char *buscarCaminhoTxtConsulta(ParametrosGenericos p){
 
 /*****************************************************************************************************/
 
-char *buscarCaminhoDotBase(ParametrosGenericos p){
+int temArquivoVia(ParametrosGenericos p ){
 
     Parametros *parametros = (Parametros*)p;
-    
-    char *nome_base = extrairNomeBase(parametros->arquivoGeo);
 
-    if(nome_base == NULL){
-        return NULL;
-    }
-
-    size_t len = strlen(parametros->diretorioSaida) + strlen(nome_base) + 10;
-    char *caminho = malloc(len);
-
-    if(caminho != NULL){
-        snprintf(caminho, len, "%s/%s.dot", parametros->diretorioSaida, nome_base);
-    }
-    
-    free(nome_base);
-
-    return caminho;
+    return parametros->arquivoVia != NULL;
 
 }
 
-/*****************************************************************************************************/
+char *buscarArquivoVia(ParametrosGenericos p){
 
-char *buscarCaminhoDotConsulta(ParametrosGenericos p){
-    
     Parametros *parametros = (Parametros*)p;
 
-    if(parametros->arquivoQry == NULL){
-        return NULL;
-    }
-
-    char *nome_base_geo = extrairNomeBase(parametros->arquivoGeo);
-    char *nome_base_qry = extrairNomeBase(parametros->arquivoQry);
-    
-    if(!nome_base_geo || !nome_base_qry){
-        return NULL; 
-    }
-    
-    size_t len = strlen(parametros->diretorioSaida) + strlen(nome_base_geo) + strlen(nome_base_qry) + 15;
-    char *caminho = malloc(len);
-
-    if(caminho != NULL){
-        snprintf(caminho, len, "%s/%s-%s.dot", parametros->diretorioSaida, nome_base_geo, nome_base_qry);
-    }
-    
-    free(nome_base_geo);
-    free(nome_base_qry);
-
-    return caminho;
+    return parametros->arquivoVia;
 
 }
 
-/*****************************************************************************************************/
+char *buscarCaminhoCompletoVia(ParametrosGenericos p){
+
+    Parametros *parametros = (Parametros*)p;
+
+    if(parametros->arquivoVia == NULL){
+        return NULL;
+    }
+
+    return gerarCaminho(parametros->diretorioEntrada, parametros->arquivoVia);
+
+}
