@@ -4,7 +4,8 @@
 #include "smutreap.h"
 #include <stdio.h>
 #include <stdlib.h>   
-#include <string.h>     
+#include <string.h>
+#include <strings.h>     
 
 /*****************************************************************************************************/
 
@@ -55,7 +56,7 @@ static int verificarExtensao(char *arquivo, char *extensao_esperada){
 /*****************************************************************************************************/
 
 static char* gerarCaminho(char *dir, char *arquivo){
-    
+
     size_t len_dir = strlen(dir);
     size_t len_arq = strlen(arquivo);
     size_t len_total = len_dir + len_arq + 2;
@@ -192,7 +193,7 @@ static int processar_argumentos_interno(int argc, char *argv[], Parametros *p) {
             strcpy(p->arquivoQry, argv[i + 1]);
             i++; 
         }else if(strcmp(argv[i], "-v") == 0){
-            if(i + 1 >- argc){
+            if(i + 1 >= argc){
                 fprintf(stderr, "Erro: -v antecede um argumento!\n");
                 return 0;
             }
@@ -201,7 +202,7 @@ static int processar_argumentos_interno(int argc, char *argv[], Parametros *p) {
                 return 0;
             }
 
-            p->arquivoVia = malloc(stlen(argv[i + 1]) + 1);
+            p->arquivoVia = malloc(strlen(argv[i + 1]) + 1);
             if(!p->arquivoVia){
                 fprintf(stderr, "Erro: Falha na alocacao de memoria para o arquivo .via!\n");
                 return 0;
@@ -419,7 +420,7 @@ char *buscarNomeGrafo(ParametrosGenericos p){
     Parametros *parametros = (Parametros*)p;
 
     if(parametros == NULL){
-        return 10000;
+        return NULL;
     }
 
     return parametros->nomeGrafo;
@@ -567,28 +568,24 @@ char *buscarCaminhoTxtConsulta(ParametrosGenericos p){
    
     Parametros *parametros = (Parametros*)p;
 
-    if(parametros->arquivoQry == NULL){
+    if(parametros->arquivoGeo == NULL){
         return NULL;
     }
     
     char *nome_base_geo = extrairNomeBase(parametros->arquivoGeo);
-    char *nome_base_qry = extrairNomeBase(parametros->arquivoQry);
     
-    if(!nome_base_geo || !nome_base_qry){
-        free(nome_base_geo);
-        free(nome_base_qry);
+    if(!nome_base_geo){
         return NULL;
     }
-    
-    size_t len = strlen(parametros->diretorioSaida) + strlen(nome_base_geo) + strlen(nome_base_qry) + 15;
+
+    size_t len = strlen(parametros->diretorioSaida) + strlen(nome_base_geo) + 10;
     char *caminho = malloc(len);
 
     if(caminho != NULL){
-        snprintf(caminho, len, "%s/%s-%s.txt", parametros->diretorioSaida, nome_base_geo, nome_base_qry);
+        snprintf(caminho, len, "%s/%s.txt", parametros->diretorioSaida, nome_base_geo);
     }
     
     free(nome_base_geo);
-    free(nome_base_qry);
 
     return caminho;
 
