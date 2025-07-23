@@ -16,26 +16,7 @@ void tagRetangulo(FILE* arquivo, FormaGeometricaGenerica forma){
 }
 
 /*****************************************************************************************************/
-
-void tagCirculo(FILE *arquivo, FormaGeometricaGenerica forma){
-
-    if (buscarTipoFormaGeometrica(forma) != 'c') {
-        return; // Ignora se não for círculo
-    }
-
-    void* circulo = buscarFormaGeometrica(forma);
-
-    fprintf(arquivo, "<circle cx='%lf' cy='%lf' r='%lf' stroke='%s' fill='%s'/>\n",
-            buscarCoordXFormaGeometrica(forma),
-            buscarCoordYFormaGeometrica(forma),
-            buscarRaioCirculo(circulo),
-            buscarCorBordaCirculo(circulo),
-            buscarCorPreenchimentoCirculo(circulo));
-
-}
-
-/*****************************************************************************************************/
-
+/*
 void tagLinha(FILE *arquivo, FormaGeometricaGenerica forma){
 
     fprintf(arquivo, "<line x1='%lf' y1='%lf' x2='%lf' y2='%lf' stroke='%s'/>\n",
@@ -45,23 +26,7 @@ void tagLinha(FILE *arquivo, FormaGeometricaGenerica forma){
             buscarY2Linha(buscarFormaGeometrica(forma)),
             buscarCorLinha(buscarFormaGeometrica(forma)));
 
-}
-
-/*****************************************************************************************************/
-
-void tagTexto(FILE *arquivo, FormaGeometricaGenerica forma){
-
-    fprintf(arquivo, "<text x='%lf' y='%lf' stroke='%s' fill='%s' font-family='%s' font-weight='%s' font-size='%s'><![CDATA[ %s ]]></text>\n",
-            buscarCoordXFormaGeometrica(forma),
-            buscarCoordYFormaGeometrica(forma),
-            buscarCorBordaTexto(buscarFormaGeometrica(forma)),
-            buscarCorPreenchimentoTexto(buscarFormaGeometrica(forma)),
-            buscarFonteTexto(buscarFormaGeometrica(forma)),
-            buscarPesoTexto(buscarFormaGeometrica(forma)),
-            buscarTamanhoTexto(buscarFormaGeometrica(forma)),
-            buscarTextoTexto(buscarFormaGeometrica(forma)));
-
-}
+}*/
 
 /*****************************************************************************************************/
 
@@ -75,7 +40,8 @@ void tagCabecalho(FILE* arquivo){
     // Primeira linha obrigatória para arquivos SVG bem formados
     fprintf(arquivo, "<?xml version='1.0' encoding='UTF-8'?>\n");
     // Tag de abertura correta do SVG
-    fprintf(arquivo, "<svg xmlns='http://www.w3.org/2000/svg' version='1.1'>\n");
+    fprintf(arquivo, "<svg xmlns='http://www.w3.org/2000/svg' version='1.1' "
+    "width='100%%' height='100%%' viewBox='0 0 4000 12000'>\n");
 
 }
 
@@ -94,7 +60,7 @@ void tagRodape(FILE* arquivo){
 
 /*****************************************************************************************************/
 
-void tagForma(ArvoreGenerica a, NoGenerico n, FormaGeometricaGenerica f, double x, double y, void* aux){
+void tagForma(GrafoGenerico g, NoGenerico n, FormaGeometricaGenerica f, double x, double y, void* aux){
 
     FILE* arquivo = (FILE*)aux;
     FormaGeometricaGenerica forma = (FormaGeometricaGenerica)f;
@@ -109,18 +75,10 @@ void tagForma(ArvoreGenerica a, NoGenerico n, FormaGeometricaGenerica f, double 
         case 'r':
             tagRetangulo(arquivo, forma);
             break;
-
-        case 'c':
-            tagCirculo(arquivo, forma);
-            break;
-
+        /*
         case 'l':
             tagLinha(arquivo, forma);
-            break;
-
-        case 't':
-            tagTexto(arquivo, forma);
-            break; 
+            break;*/
 
         default:
             printf("Aviso: Tipo de forma '%c' desconhecido.\n", tipo);
