@@ -12,6 +12,31 @@
 
 ////////////////////////////////////////////////////////////////////////////////////////
 
+struct DadosVertice{
+
+    char *id;
+    double x, y;
+
+};
+
+struct DadosAresta{
+
+    char *ldir, *lesq, *nome;
+    double cmp, vm;
+
+};
+
+struct Posicao{
+
+    double x, y;
+};
+
+typedef struct DadosVertice DadosVertice;
+typedef struct DadosAresta DadosAresta;
+typedef struct Posicao Posicao;
+
+////////////////////////////////////////////////////////////////////////////////////////
+
 static TabelaGenerica processarGeo(char *caminhoGeo, FILE *arquivoSvg){
 
     printf("Tentando abrir o arquivo GEO: '%s'\n", caminhoGeo);
@@ -60,24 +85,7 @@ static TabelaGenerica processarGeo(char *caminhoGeo, FILE *arquivoSvg){
 
 ////////////////////////////////////////////////////////////////////////////////////////
 
-struct DadosVertice{
-
-    char *id;
-    double x, y;
-
-};
-
-struct DadosAresta{
-
-    char *ldir, *lesq, *nome;
-    double cmp, vm;
-
-};
-
-typedef struct DadosVertice DadosVertice;
-typedef struct DadosAresta DadosAresta;
-/*
-static void calcularBoundingBoxVertice(Info i, double *x, double *y, double *w, double *h){
+void calcularBoundingBoxVertice(Info i, double *x, double *y, double *w, double *h){
 
     DadosVertice *dadosVertice = (DadosVertice*)i;
 
@@ -86,7 +94,7 @@ static void calcularBoundingBoxVertice(Info i, double *x, double *y, double *w, 
     *w = 0.0;
     *h = 0.0;
 
-}*/
+}
 
 // Função auxiliar.
 static char *duplicarString(char *string){
@@ -108,7 +116,9 @@ static char *duplicarString(char *string){
 
 }
 
-static Graph processarVia(char *caminhoVia, FILE *arquivoSvg){
+////////////////////////////////////////////////////////////////////////////////////////
+
+static Graph processarVia(char *caminhoVia, FILE *arquivoSvg, SmuTreap *saidaArvore){
 
     FILE *arquivoVia = fopen(caminhoVia, "r");
 
@@ -124,6 +134,8 @@ static Graph processarVia(char *caminhoVia, FILE *arquivoSvg){
     Node origem, destino;
     Graph grafo = NULL;
     SmuTreap arvore = newSmuTreap(5, 1.1, 0.001, 10000);
+    *saidaArvore = arvore;
+
     double mx, my;
 
     while(fgets(linha, sizeof(linha), arquivoVia)){
@@ -163,7 +175,7 @@ static Graph processarVia(char *caminhoVia, FILE *arquivoSvg){
 
                 fprintf(arquivoSvg, "<text x='%.2lf' y='%.2lf' font-size='7' fill='blue' text-anchor='middle' dominant-baseline='middle'>(%s)</text>\n", copiaDadosVertice->x, copiaDadosVertice->y - 6, copiaDadosVertice->id);
 
-                //insertSmuT(arvore, dadosVertice.x, dadosVertice.y, &dadosVertice, 0, calcularBoundingBoxVertice);
+                insertSmuT(arvore, copiaDadosVertice->x, copiaDadosVertice->y, copiaDadosVertice, 1, calcularBoundingBoxVertice);
 
             }else{
                 printf("Erro: Linha de texto invalida: %s\n", linha);
@@ -222,13 +234,6 @@ static Graph processarVia(char *caminhoVia, FILE *arquivoSvg){
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////
-
-struct Posicao{
-
-    double x, y;
-};
-
-typedef struct Posicao Posicao;
 
 static Posicao encontrarPosicao(TabelaGenerica t, char *cep, char *face, double numero){
 
@@ -291,40 +296,63 @@ static void processarArrobaOInterrogacao(TabelaGenerica t, char *linha, FILE *ar
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////
-/*
-static void processarAlag(Graph g, char *linha, FILE *arquivoSvg, FILE *arquivoTxt){
+
+static void processarAlag(Graph g, SmuTreap t, char *linha, FILE *arquivoSvg, FILE *arquivoTxt){
 
     int n;
     double x, y, w, h;
 
-    if(sscanf(linha, "alag %s %lf %lf %lf %lf", &n, &x, &y, &w, &h) != 5){
+    if(sscanf(linha, "alag %d %lf %lf %lf %lf", &n, &x, &y, &w, &h) != 5){
         printf("Erro: Linha invalida no comando alag: %s\n", linha);
         return;
     }
 
+    fprintf(arquivoSvg, "<rect x='%.2lf' y='%.2lf' width='%.2lf' height='%.2lf' "
+    "fill='#AB37C8' stroke='#AA0044' stroke-width='1' fill-opacity='0.5'/>\n",
+    x, y, w, h);
+
     char nomeSubgrafo[32];
     sprintf(nomeSubgrafo, "alag%d", n);
-
     createSubgraphDG(g, nomeSubgrafo, NULL, 0, false);
 
-    fprintf(arquivoSvg, "<rect x=\"%.2lf\" y=\"%.2lf\" width=\"%.2lf\" height=\"%.2lf\" ""fill=\"#AB37C8\" stroke=\"#AA0044\" stroke-width=\"1\" fill-opacity=\"0.5\" />\n", x, y, w, h);
+    Lista verticesNaRegiao = inicializarLista();
+    getNodisDentroRegiaoSmuT(t, x, y, x + w, y + h, verticesNaRegiao);
 
-    int qtdVerticesGrafo = getTotalNodes(g), i;
+    int qtdVerticesGrafo = buscarTamanhoLista(verticesNaRegiao), i;
 
     for(i = 0; i < qtdVerticesGrafo; i++){
-        DadosVertice *dadosVertice = getNodeInfo(g, i);
-        if(dadosVertice == NULL){
-            continue;
+        Nodi no = (Nodi)buscarElementoLista(verticesNaRegiao, i);
+        DadosVertice *dadosVertice = (DadosVertice*)getInfoSmuT(t, no);
+        Node vertice = getNode(g, dadosVertice->id);
+
+        Lista arestas = inicializarLista();
+        adjacentEdges(g, vertice, arestas);
+
+        int qtdArestasGrafo = buscarTamanhoLista(arestas);
+
+        for(int j = 0; j < qtdArestasGrafo; j++){
+            Edge aresta = (Edge)buscarElementoLista(arestas, j);
+
+            desativarAresta(g, aresta);
+            includeEdgeSDG(g, nomeSubgrafo, aresta);
+
+            DadosAresta *dadosAresta = (DadosAresta*)getEdgeInfo(g, aresta);
+            fprintf(arquivoTxt, "[*] alag %d %lf %lf %lf %lf\n", n, x, y, w, h);
+            fprintf(arquivoTxt, " Aresta desativada: %s -> %s\nRua: %s\nVm: %.2lf\nCmp: %.2lf", getNodeName(g, getFromNode(g, aresta)), getNodeName(g, getToNode(g, aresta)), 
+                    dadosAresta->nome, dadosAresta->vm, dadosAresta->cmp);
+
         }
 
-        if(dadosVertice->x >= x && dadosVertice.)
+        desalocarLista(arestas);
     }
-    
-}*/
+
+    desalocarLista(verticesNaRegiao);
+
+}
 
 ////////////////////////////////////////////////////////////////////////////////////////
 
-static void processarQry(TabelaGenerica t, Graph g, char *caminhoQry, FILE *arquivoSvg, FILE *arquivoTxt){
+static void processarQry(TabelaGenerica t, Graph g, SmuTreap tr, char *caminhoQry, FILE *arquivoSvg, FILE *arquivoTxt){
 
     FILE *arquivoQry = fopen(caminhoQry, "r");
 
@@ -342,9 +370,9 @@ static void processarQry(TabelaGenerica t, Graph g, char *caminhoQry, FILE *arqu
         }
 
         if(strncmp(linha, "@o?", 3) == 0){
-            //processarArrobaOInterrogacao(g, linha, arquivoSvg, arquivoTxt, registradores);
+            processarArrobaOInterrogacao(g, linha, arquivoSvg, arquivoTxt, registradores);
         }else if(strncmp(linha, "alag", 4) == 0){
-            
+            processarAlag(g, tr, linha, arquivoSvg, arquivoTxt);
         }else if(strncmp(linha, "dren", 4) == 0){
 
         }else if(strncmp(linha, "sg", 2) == 0){
@@ -386,9 +414,10 @@ void processarArquivos(char *caminhoGeo, char *caminhoVia, char *caminhoQry, cha
     TabelaGenerica quadras = processarGeo(caminhoGeo, arquivoSvg);
 
     Graph grafo = NULL;
+    SmuTreap arvore = NULL;
 
     if(caminhoVia != NULL){
-        grafo = processarVia(caminhoVia, arquivoSvg);
+        grafo = processarVia(caminhoVia, arquivoSvg, &arvore);
 
         if(grafo == NULL){
             printf("Erro: Falha ao gerar o grafo com o arquivo .via!\n");
@@ -399,7 +428,7 @@ void processarArquivos(char *caminhoGeo, char *caminhoVia, char *caminhoQry, cha
     }
 
     if(caminhoQry != NULL && grafo != NULL){
-        processarQry(quadras, grafo, caminhoQry, arquivoSvg, arquivoTxt);
+        processarQry(quadras, grafo, arvore, caminhoQry, arquivoSvg, arquivoTxt);
     }
 
     tagRodape(arquivoSvg);
