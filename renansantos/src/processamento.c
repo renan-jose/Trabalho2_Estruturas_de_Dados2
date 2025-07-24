@@ -40,9 +40,11 @@ typedef struct Posicao Posicao;
 
 ////////////////////////////////////////////////////////////////////////////////////////
 
-static TabelaGenerica processarGeo(char *caminhoGeo, FILE *arquivoSvg){
+/* O arquivo .geo é o que "vai daeixar a casa arrumadda", e contém os seguintes comandos:
+ * q cep x y w h = Insere uma quadra (retângulo e cep);
+ * cq sw cfill cstrk = Cores do preenchimento, da borda das quadras, espessura da borda. */
 
-    printf("Tentando abrir o arquivo GEO: '%s'\n", caminhoGeo);
+static TabelaGenerica processarGeo(char *caminhoGeo, FILE *arquivoSvg){
 
     FILE *arquivoGeo = fopen(caminhoGeo, "r");
 
@@ -51,9 +53,8 @@ static TabelaGenerica processarGeo(char *caminhoGeo, FILE *arquivoSvg){
         return NULL;
     }
 
-    char linha[512];
     double x, y, w, h;
-    char cep[32], corb[32], corp[32], expb[32];
+    char cep[32], corb[32], corp[32], expb[32], linha[512];
     TabelaGenerica tabela = criarTabela(10000);
 
     while(fgets(linha, sizeof(linha), arquivoGeo)){
@@ -62,18 +63,26 @@ static TabelaGenerica processarGeo(char *caminhoGeo, FILE *arquivoSvg){
         }
        
         if(strncmp(linha, "cq", 2) == 0){
+
             sscanf(linha, "cq %s %s %s", corp, corb, expb);
+
         }else if(strncmp(linha, "q", 1) == 0){
+
             if(sscanf(linha, "q %s %lf %lf %lf %lf", cep, &x, &y, &w, &h) == 5){
+
                 FormaGeometricaGenerica retangulo = formularRetangulo(cep, x, y, w, h, corp, corb, expb);
+
                 if(retangulo != NULL){
+
                     inserirElementoTabela(tabela, cep, retangulo);
                     tagRetangulo(arquivoSvg, retangulo);
                     fprintf(arquivoSvg, "<text x='%.2lf' y='%.2lf' font-size='14' fill='black' font-weight='bold' "
                     "text-anchor='start' dominant-baseline='hanging'>%s</text>\n", x + 2, y + 2, cep);
+
                 }else{
                     printf("Erro: inha malformada ignorada: %s", linha);
                 }
+
             }else{
                 printf("Erro: Linha de texto invalida: %s\n", linha);
             }
@@ -120,6 +129,11 @@ static char *duplicarString(char *string){
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////
+
+/* A entrada de dados será feita arquivo-texto (arquivo.via) com a descrição do sistema viário da cidade. 
+ * O sistema viário da cidade é representado por um grafo direcionado. O Mapa Viário é um grafo direcionado:
+ * os vértices representam os extremos de um segmento de rua e os arcos representam um segmento de rua e indicam 
+ * o sentido do tráfego*/
 
 static Graph processarVia(char *caminhoVia, FILE *arquivoSvg, SmuTreap *saidaArvore){
 
@@ -389,12 +403,12 @@ static void processarDren(Graph g, char *linha, FILE *arquivoTxt){
 
     char nomeSubgrafo[32];
     sprintf(nomeSubgrafo, "alag%d", n);
-    
+    /*
     if (!subgraphExisteEValido(g, nomeSubgrafo)) {
         fprintf(stderr, "[!] dren %d ignorado: subgrafo '%s' inexistente ou vazio.\n", n, nomeSubgrafo);
         fprintf(arquivoTxt, "[!] dren %d — subgrafo inexistente ou vazio.\n", n);
         return;
-    }
+    }*/
 
     Lista arestasSubgrafo = inicializarLista();
     getAllEdgesSDG(g, nomeSubgrafo, arestasSubgrafo);
