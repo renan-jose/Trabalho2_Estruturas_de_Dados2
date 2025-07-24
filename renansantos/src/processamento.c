@@ -495,24 +495,16 @@ static bool relaxarAresta(Graph g, Node verticeAtual, Node verticeVizinho, Edge 
 
 }
 
-static void processarPInterrogacao(Graph g, char *linha, FILE *arquivoTxt){
+static Lista dijkstraParaguaio(Graph g, char *idOrigem, char *idDestino, char *nomeSubgrafo){
 
-    char nomePercurso[32], nomeSubgrafo[32], reg1[32], reg2[32];
-
-    if(sscanf(linha, "p? %s %s %s %s", nomePercurso, nomeSubgrafo, reg1, reg2) != 4){
-        printf("Erro: Falha no comando p?: %s\n", linha);
-
-        return;
-    }
-
-    Node origem = getNode(g, reg1);
-    Node destino = getNode(g, reg2);
+    Node origem = getNode(g, idOrigem);
+    Node destino = getNode(g, idDestino);
 
     FilaPrioridadeGenerica fila = criarFilaPrioridade();
     TabelaGenerica custo = criarTabela(500), pai = criarTabela(500), visitado = criarTabela(500);
 
     inserirFilaPrioridade(fila, (void*)(intptr_t)origem, calcularDistancia(g, origem, destino));
-    inserirElementoTabela(custo, reg1, (void*)(intptr_t)0);
+    inserirElementoTabela(custo, idOrigem, (void*)(intptr_t)0);
 
     while(!filaPrioridadeVazia(fila)){
         Node atual = (Node)(intptr_t)removerFilaPrioridade(fila);
@@ -547,39 +539,117 @@ static void processarPInterrogacao(Graph g, char *linha, FILE *arquivoTxt){
         desalocarLista(adjacentes);
     }
 
-    fprintf(arquivoTxt, "[*] p? %s %s %s %s\n", nomePercurso, nomeSubgrafo, reg1, reg2);
-
-    if(!buscarElementoTabela(pai, getNodeName(g, destino))){
-        fprintf(arquivoTxt, " Trajeto inacessivel a partir da origem!\n");
-    }else{
-        Lista caminho = inicializarLista();
-
-        char *atual = getNodeName(g, destino);
-        while(atual != NULL){
-            inserirInicioLista(caminho, atual);
-            atual = buscarElementoTabela(pai, atual);
-        }
-
-        fprintf(arquivoTxt, " Caminho mais curto: ");
-        for(int i = 0; i < buscarTamanhoLista(caminho); i++){
-            fprintf(arquivoTxt, "%s", (char*)buscarElementoLista(caminho, i));
-            if(i != buscarTamanhoLista(caminho) - 1){
-                fprintf(arquivoTxt, "->");
-            }
-        }
-        fprintf(arquivoTxt, "\n");
-
-        desalocarLista(caminho);
-
+    if(!buscarElementoTabela(pai, idDestino)){
+        desalocarFilaPrioridade(fila);
+        desalocarTabela(custo);
+        desalocarTabela(pai);
+        desalocarTabela(visitado);
+        return NULL;
     }
 
+    Lista caminho = inicializarLista();
+
+    char *atual = getNodeName(g, destino);
+    while(atual != NULL){
+        inserirInicioLista(caminho, atual);
+        atual = buscarElementoTabela(pai, atual);
+    }
+    
     desalocarFilaPrioridade(fila);
     desalocarTabela(custo);
     desalocarTabela(pai);
     desalocarTabela(visitado);
 
+    return caminho;
+
 }
 
+static void processarPInterrogacao(Graph g, char *linha, FILE *arquivoTxt){
+
+    char nomePercurso[32], nomeSubgrafo[32], reg1[32], reg2[32];
+
+    if(sscanf(linha, "p? %s %s %s %s", nomePercurso, nomeSubgrafo, reg1, reg2) != 4){
+        printf("Erro: Falha no comando p?: %s\n", linha);
+        return;
+    }
+
+    Node origem = getNode(g, reg1);
+    Node destino = getNode(g, reg2);
+
+    fprintf(arquivoTxt, "[*] p? %s %s %s %s\n", nomePercurso, nomeSubgrafo, reg1, reg2);
+
+    Lista caminho = dijkstraParaguaio(g, reg1, reg2, nomeSubgrafo);
+
+    if(caminho == NULL || buscarTamanhoLista(caminho) == 0){
+        fprintf(arquivoTxt, " Trajeto inacessivel a partir da origem!\n");
+    }else{
+        fprintf(arquivoTxt, " Caminho mais curto: ");
+        int i;
+        for(i = 0; i < buscarTamanhoLista(caminho); i++){
+            fprintf(arquivoTxt, "%s", (char*)buscarElementoLista(caminho, i));
+            if(i < buscarTamanhoLista(caminho) - 1){
+                fprintf(arquivoTxt, "->");
+            }
+        }
+        fprintf(arquivoTxt, "\n");
+    }
+
+    desalocarLista(caminho);
+
+}
+
+
+////////////////////////////////////////////////////////////////////////////////////////
+
+static void processarJoin(Graph g, char *linha, FILE *arquivoTxt, TabelaGenerica caminho){
+
+    char nomeFinal[32], nome1[32], nome2[32];
+    if(sscanf(linha, "join %s %s %s", nomeFinal, nome1, nome2) != 3){
+        printf("Erro: Comando join invalido: %s\n", linha);
+        return;
+    }
+
+    Lista caminho1 = buscarElementoTabela(caminho, nome1);
+    Lista caminho2 = buscarElementoTabela(caminho, nome2);
+
+    if(!caminho1 || !caminho2){
+        fprintf(arquivoTxt, "[*] join %s %s %s\n Caminhos %s ou %s inexistentes.\n", nomeFinal , nome1, nome2, nome1, nome2);
+        return;
+    }
+
+    char *destino = buscarElementoLista(caminho1, buscarTamanhoLista(caminho1) - 1);
+    char *origem = buscarElementoLista(caminho2, 0);
+
+    Lista intermediario = dijkstraParaguaio(g, destino, origem, "-");
+
+    fprintf(arquivoTxt, "[*] join %s %s %s\n", nomeFinal, nome1, nome2);
+
+    if(intermediario == NULL || buscarTamanhoLista(intermediario) == 0){
+        fprintf(arquivoTxt, " Caminho intermediario entre %s e %s nao encontrado!\n", destino, origem);
+        return;
+    }
+
+    Lista caminhoFinal = inicializarLista();
+
+    int i;
+
+    for(i = 0; i < buscarTamanhoLista(caminho1) - 1; i++){
+        inserirFimLista(caminhoFinal, buscarElementoLista(caminho1, i));
+    }
+
+    for(i = 0; i < buscarTamanhoLista(intermediario) - 1; i++){
+        inserirFimLista(caminhoFinal, buscarElementoLista(intermediario, i));
+    }
+
+    for(i = 0; i < buscarTamanhoLista(caminho2); i++){
+        inserirFimLista(caminhoFinal, buscarElementoLista(caminho2, i));
+    }
+
+    inserirElementoTabela(caminho, nomeFinal, caminhoFinal);
+
+    fprintf(arquivoTxt, " Caminho combinado com sucesso.\n");
+
+}
 
 ////////////////////////////////////////////////////////////////////////////////////////
 
@@ -609,14 +679,16 @@ static void processarQry(TabelaGenerica t, Graph g, SmuTreap tr, char *caminhoQr
         }else if(strncmp(linha, "sg", 2) == 0){
             processarSg(g, tr, linha, arquivoSvg);
         }else if(strncmp(linha, "p?", 2) == 0){
-
+            processarPInterrogacao(g, linha, arquivoTxt);
         }else if(strncmp(linha, "join", 4) == 0){
-
+            processarJoin(g, linha, arquivoTxt, t);
         }else if(strncmp(linha, "shw", 3) == 0){
 
         }
     }
     
+    fclose(arquivoQry);
+
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////
