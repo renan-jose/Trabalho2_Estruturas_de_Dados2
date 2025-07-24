@@ -352,6 +352,37 @@ static void processarAlag(Graph g, SmuTreap t, char *linha, FILE *arquivoSvg, FI
 
 ////////////////////////////////////////////////////////////////////////////////////////
 
+static void processarDren(Graph g, char *linha, FILE *arquivoTxt){
+
+    int n;
+
+    if(sscanf(linha, "dren %d", &n) != 1){
+        printf("Erro: Linha invalida no comando dren: %s\n", linha);
+        return;
+    }
+
+    char nomeSubgrafo[32];
+    sprintf(nomeSubgrafo, "alag%d", n);
+
+    Lista arestasSubgrafo = inicializarLista();
+    getAllEdgesSDG(g, nomeSubgrafo, arestasSubgrafo);
+
+    int qtdArestasGrafo = buscarTamanhoLista(arestasSubgrafo), i;
+
+    for(i = 0; i < qtdArestasGrafo; i++){
+        Edge aresta = (Edge)buscarElementoLista(arestasSubgrafo, i);
+        ativarAresta(g, aresta);
+
+        fprintf(arquivoTxt, "[*] dren %d\n", n);
+        fprintf(arquivoTxt, " Aresta ativada: %s -> %s\n", getNodeName(g, getFromNode(g, aresta)), getNodeName(g, getToNode(g, aresta)));
+    }
+
+    desalocarLista(arestasSubgrafo);
+
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+
 static void processarQry(TabelaGenerica t, Graph g, SmuTreap tr, char *caminhoQry, FILE *arquivoSvg, FILE *arquivoTxt){
 
     FILE *arquivoQry = fopen(caminhoQry, "r");
@@ -374,7 +405,7 @@ static void processarQry(TabelaGenerica t, Graph g, SmuTreap tr, char *caminhoQr
         }else if(strncmp(linha, "alag", 4) == 0){
             processarAlag(g, tr, linha, arquivoSvg, arquivoTxt);
         }else if(strncmp(linha, "dren", 4) == 0){
-
+            processarDren(g, linha, arquivoTxt);
         }else if(strncmp(linha, "sg", 2) == 0){
 
         }else if(strncmp(linha, "p?", 2) == 0){
