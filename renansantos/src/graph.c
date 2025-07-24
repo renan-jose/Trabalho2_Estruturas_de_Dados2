@@ -1263,15 +1263,3 @@ Node includeNodeSDG(Graph g, char *nomeSubgrafo, Node node){
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////
-
-bool subgraphExisteEValido(Graph g, char *nomeSubgrafo) {
-    Grafo *grafo = (Grafo*)g;
-
-    if (!grafo || !nomeSubgrafo) return false;
-
-    Subgrafo *sub = buscarElementoTabela(grafo->subgrafos, nomeSubgrafo);
-    if (!sub || sub->qtdVertices <= 0 || !sub->vertices) return false;
-
-    return true;
-}
-

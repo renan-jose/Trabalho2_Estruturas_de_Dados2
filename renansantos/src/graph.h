@@ -362,15 +362,26 @@ void getAllEdgesSDG(Graph g, char *nomeSubgrafo, Lista lstEdges);
  */
 Graph produceGraph(Graph g, char *nomeSubgrafo);
 
-/* Explicar depois. */
+
+/* Ativa a aresta e do grafo g. 
+ * Parâmetros:
+ *    - g = grafo (tipo Graph)
+ *    - e = aresta do grafo g (tipo Edge) 
+ * Retorno:
+ *    - nenhum; 
+ */
 void ativarAresta(Graph g, Edge e);
 
 
-/* Explicar depois */
+/* Desativa a aresta e do grafo g. 
+ * Parâmetros:
+ *    - g = grafo (tipo Graph)
+ *    - e = aresta do grafo g (tipo Edge) 
+ * Retorno:
+ *    - nenhum; 
+ */
 void desativarAresta(Graph g, Edge e);
 
 Node includeNodeSDG(Graph g, char *nomeSubgrafo, Node node);
-
-bool subgraphExisteEValido(Graph g, char *nomeSubgrafo);
 
 #endif 
