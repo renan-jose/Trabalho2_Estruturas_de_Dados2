@@ -87,7 +87,4 @@ bool formaDentroRegiao(ArvoreGenerica, NoGenerico, FormaGeometricaGenerica, doub
 /* Determina se o ponto (x,y) deva ser considerado "interno" à forma. */
 bool pontoInternoforma(ArvoreGenerica, NoGenerico, FormaGeometricaGenerica, double, double);
 
-/* Converte o tipo de forma (ex: 'r', 'c', 'l', 't') em um valor inteiro descritivo. */
-int tipoFormaParaDescritor(char);
-
 #endif /* _FORMA_H_ */

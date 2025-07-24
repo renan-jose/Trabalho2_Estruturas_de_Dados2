@@ -252,20 +252,6 @@ double buscarAlturaFormaGeometrica(FormaGeometricaGenerica f){
 
 /*****************************************************************************************************/
 
-int tipoFormaParaDescritor(char tipo){
-
-    switch(tipo){
-        case 'r': 
-            return 1;
-
-        default: 
-            return -1; 
-    }
-
-}
-
-/*****************************************************************************************************/
-
 char *buscarCorBordaFormaGeometrica(FormaGeometricaGenerica f){
 
     FormaGeometrica *forma = (FormaGeometrica*)f;
