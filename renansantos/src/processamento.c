@@ -483,7 +483,7 @@ static bool relaxarAresta(Graph g, Node verticeAtual, Node verticeVizinho, Edge 
         double distancia = calcularDistancia(g, verticeVizinho, destino);
         double f = novoCusto + distancia;
 
-        inserirFilaPrioridade(fila, verticeVizinho, f);
+        inserirFilaPrioridade(fila, (void*)(intptr_t)verticeVizinho, f);
         inserirElementoTabela(custo, idVizinho, (void *)(intptr_t)novoCusto);
         inserirElementoTabela(pai, idVizinho, idAtual);
 
@@ -495,7 +495,90 @@ static bool relaxarAresta(Graph g, Node verticeAtual, Node verticeVizinho, Edge 
 
 }
 
-static void processarPInterrogacao(){}
+static void processarPInterrogacao(Graph g, char *linha, FILE *arquivoTxt){
+
+    char nomePercurso[32], nomeSubgrafo[32], reg1[32], reg2[32];
+
+    if(sscanf(linha, "p? %s %s %s %s", nomePercurso, nomeSubgrafo, reg1, reg2) != 4){
+        printf("Erro: Falha no comando p?: %s\n", linha);
+
+        return;
+    }
+
+    Node origem = getNode(g, reg1);
+    Node destino = getNode(g, reg2);
+
+    FilaPrioridadeGenerica fila = criarFilaPrioridade();
+    TabelaGenerica custo = criarTabela(500), pai = criarTabela(500), visitado = criarTabela(500);
+
+    inserirFilaPrioridade(fila, (void*)(intptr_t)origem, calcularDistancia(g, origem, destino));
+    inserirElementoTabela(custo, reg1, (void*)(intptr_t)0);
+
+    while(!filaPrioridadeVazia(fila)){
+        Node atual = (Node)(intptr_t)removerFilaPrioridade(fila);
+        char *idAtual = getNodeName(g, atual);
+
+        if(buscarElementoTabela(visitado, idAtual)) continue;
+
+        inserirElementoTabela(visitado, idAtual, (void *)1);
+
+        if(atual == destino) break;
+
+        Lista adjacentes = inicializarLista();
+
+        if(strcmp(nomeSubgrafo, "-") == 0){
+            adjacentEdges(g, atual, adjacentes);
+        }else{
+            adjacentEdgesSDG(g, nomeSubgrafo, atual, adjacentes);
+        }
+
+        int i;
+
+        for(i = 0; i < buscarTamanhoLista(adjacentes); i++){
+            Edge aresta = buscarElementoLista(adjacentes, i);
+            Node vizinho = getToNode(g, aresta);
+            char *idvizinho = getNodeName(g, vizinho);
+
+            if(!verificarElementoLista(visitado, idvizinho)){
+                relaxarAresta(g, atual, vizinho, aresta, custo, pai, fila, destino);
+            }
+        }
+
+        desalocarLista(adjacentes);
+    }
+
+    fprintf(arquivoTxt, "[*] p? %s %s %s %s\n", nomePercurso, nomeSubgrafo, reg1, reg2);
+
+    if(!buscarElementoTabela(pai, getNodeName(g, destino))){
+        fprintf(arquivoTxt, " Trajeto inacessivel a partir da origem!\n");
+    }else{
+        Lista caminho = inicializarLista();
+
+        char *atual = getNodeName(g, destino);
+        while(atual != NULL){
+            inserirInicioLista(caminho, atual);
+            atual = buscarElementoTabela(pai, atual);
+        }
+
+        fprintf(arquivoTxt, " Caminho mais curto: ");
+        for(int i = 0; i < buscarTamanhoLista(caminho); i++){
+            fprintf(arquivoTxt, "%s", (char*)buscarElementoLista(caminho, i));
+            if(i != buscarTamanhoLista(caminho) - 1){
+                fprintf(arquivoTxt, "->");
+            }
+        }
+        fprintf(arquivoTxt, "\n");
+
+        desalocarLista(caminho);
+
+    }
+
+    desalocarFilaPrioridade(fila);
+    desalocarTabela(custo);
+    desalocarTabela(pai);
+    desalocarTabela(visitado);
+
+}
 
 
 ////////////////////////////////////////////////////////////////////////////////////////
