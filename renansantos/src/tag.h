@@ -10,7 +10,7 @@
 /* Importação das bibliotecas. */
 #include <stdio.h>
 
-typedef void *GrafoGenerico;   // Representa o grafo como um todo.
+// Representa o grafo como um todo.
 typedef void *FormaGeometricaGenerica; // Representa a forma geométrica como um todo.
 
 /* Insere a tag de abertura padrão de um arquivo SVG. 
