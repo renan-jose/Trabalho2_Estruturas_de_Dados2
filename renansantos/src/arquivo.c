@@ -415,48 +415,6 @@ int temArquivoQry(ParametrosGenericos p){
 
 /*****************************************************************************************************/
 
-char *buscarNomeGrafo(ParametrosGenericos p){
-
-    Parametros *parametros = (Parametros*)p;
-
-    if(parametros == NULL){
-        return NULL;
-    }
-
-    return parametros->nomeGrafo;
-
-}
-
-/*****************************************************************************************************/
-
-int buscarLimiteVertices(ParametrosGenericos p){
-
-    Parametros *parametros = (Parametros*)p;
-
-    if(parametros == NULL){
-        return 3;
-    }
-
-    return parametros->limiteVertices;
-
-}
-
-/*****************************************************************************************************/
-
-bool buscarDirecionado(ParametrosGenericos p){
-
-    Parametros *parametros = (Parametros*)p;
-
-    if(parametros == NULL){
-        return 1.10;
-    }
-
-    return parametros->direcionado;
-
-}
-
-/*****************************************************************************************************/
-
 char *buscarCaminhoCompletoGeo(ParametrosGenericos p){
 
     Parametros *parametros = (Parametros*)p;
