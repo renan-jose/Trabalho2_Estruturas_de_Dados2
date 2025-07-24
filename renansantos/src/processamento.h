@@ -10,7 +10,9 @@
 #ifndef _PROCESSAMENTO_H_
 #define _PROCESSAMENTO_H_
 
-/* Lê e executa os comandos vindos dos 3 arquivos (.geo, .via e .qry). */
+/* Processa os comandos presentes nos arquivos .geo, .via e .qry, operando sobre estruturas de dados e gerando os 
+ * arquivos de saída correspondentes. 
+ */
 
 // Explicar depois  
 void processarArquivos(char *, char *,  char *, char *, char *);
