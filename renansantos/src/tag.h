@@ -11,8 +11,7 @@
 #include "forma.h"  
 #include <stdio.h>
 
-typedef void* GrafoGenerico;   // Representa a árvore como um todo
-typedef void* NoGenerico;       // Representa o nó da árvore
+typedef void* GrafoGenerico;   // Representa o grafo como um todo
 
 /* Insere a tag de abertura padrão de um arquivo SVG. 
  * FILE*: ponteiro para o arquivo onde o cabeçalho será escrito. */
@@ -22,23 +21,9 @@ void tagCabecalho(FILE*);
  * FILE*: ponteiro para o arquivo onde o rodapé será escrito. */
 void tagRodape(FILE*);
 
-/* Função de visita chamada ao percorrer a árvore. 
- * Gera a tag SVG correspondente a uma forma.
- * GrafoGenerico: árvore onde a forma está inserida.
- * NoGenerico: nó da árvore correspondente à forma.
- * FormaGeometricaGenerica: forma geométrica a ser desenhada.
- * double, double: coordenadas de âncora (podem ser ignoradas dependendo da forma).
- * void* dado auxiliar genérico (usado como contexto ou arquivo de saída). */
-void tagForma(GrafoGenerico, NoGenerico, FormaGeometricaGenerica, double, double, void*);
-
 /* Escreve a representação SVG de um retângulo.
  * FILE*: destino do conteúdo SVG.
  * FormaGeometricaGenerica: forma retângulo a ser desenhada. */
 void tagRetangulo(FILE*, FormaGeometricaGenerica);
-
-/* Escreve a representação SVG de uma linha.
- * FILE*: destino do conteúdo SVG.
- * FormaGeometricaGenerica: forma linha a ser desenhada. */
-void tagLinha(FILE*, FormaGeometricaGenerica);
 
 #endif // _TAG_H_ 
