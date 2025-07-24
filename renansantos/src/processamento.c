@@ -383,6 +383,75 @@ static void processarDren(Graph g, char *linha, FILE *arquivoTxt){
 
 ////////////////////////////////////////////////////////////////////////////////////////
 
+static void processarSg(Graph g, SmuTreap t, char *linha, FILE *arquivoSvg){
+
+    char nomeSubgrafo[32];
+    double x, y, w, h;
+
+    if(sscanf(linha, "sg %s %lf %lf %lf %lf", nomeSubgrafo, &x, &y, &w, &h) != 5){
+        printf("Erro: Linha invalida no comando sg: %s", linha);
+        return;
+    }
+
+    fprintf(arquivoSvg, "<rect x='%.2lf' y='%.2lf' width='%.2lf' height='%.2lf' "
+        "fill='none' stroke='red' stroke-width='2' stroke-dasharray='5,5'/>\n",
+        x, y, w, h);
+
+    createSubgraphDG(g, nomeSubgrafo, NULL, 0, false);
+
+    Lista verticesNaRegiao = inicializarLista();
+
+    getNodisDentroRegiaoSmuT(t, x, y, x + w, y + h, verticesNaRegiao);
+
+    int qtdVerticesGrafo = buscarTamanhoLista(verticesNaRegiao), i;
+    TabelaGenerica tabelaVertices = criarTabela(500);
+    Nodi no;
+    Node vertice, destino;
+    Edge aresta;
+    DadosVertice *dadosVertice;
+    
+
+    for(i = 0; i < qtdVerticesGrafo; i++){
+        no = (Nodi)buscarElementoLista(verticesNaRegiao, i);
+        dadosVertice = (DadosVertice*)getInfoSmuT(t, no);
+        inserirElementoTabela(tabelaVertices, dadosVertice->id, NULL);
+
+        vertice = getNode(g, dadosVertice->id);
+
+        includeNodeSDG(g, nomeSubgrafo, vertice);
+    }
+
+    for(i = 0; i < qtdVerticesGrafo; i++){
+        no = buscarElementoLista(verticesNaRegiao, i);
+        dadosVertice = (DadosVertice*)getInfoSmuT(t, no);
+        vertice = getNode(g, dadosVertice->id);
+
+        Lista arestas = inicializarLista();
+        adjacentEdges(g, vertice, arestas);
+
+        int qtdArestasGrafo = buscarTamanhoLista(arestas), j;
+
+        for(j = 0; j < qtdArestasGrafo; j++){
+            aresta = buscarElementoLista(arestas, j);
+            destino = getToNode(g, aresta);
+            char *idDestino = getNodeName(g, destino);
+
+            if(verificarElementoLista(tabelaVertices, idDestino)){
+                includeEdgeSDG(g, nomeSubgrafo, aresta);
+            }
+        }
+
+        desalocarLista(arestas);
+
+    }
+
+    desalocarLista(verticesNaRegiao);
+    desalocarTabela(tabelaVertices);
+    
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+
 static void processarQry(TabelaGenerica t, Graph g, SmuTreap tr, char *caminhoQry, FILE *arquivoSvg, FILE *arquivoTxt){
 
     FILE *arquivoQry = fopen(caminhoQry, "r");
@@ -407,7 +476,7 @@ static void processarQry(TabelaGenerica t, Graph g, SmuTreap tr, char *caminhoQr
         }else if(strncmp(linha, "dren", 4) == 0){
             processarDren(g, linha, arquivoTxt);
         }else if(strncmp(linha, "sg", 2) == 0){
-
+            processarSg(g, tr, linha, arquivoSvg);
         }else if(strncmp(linha, "p?", 2) == 0){
 
         }else if(strncmp(linha, "join", 4) == 0){
