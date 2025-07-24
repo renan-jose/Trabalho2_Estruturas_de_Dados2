@@ -17,7 +17,7 @@ typedef struct FormaGeometrica FormaGeometrica;
 
 /*****************************************************************************************************/
 
-FormaGeometricaGenerica formularRetangulo(int id, double x, double y, double w, double h, char *corb, char *corp){
+FormaGeometricaGenerica formularRetangulo(char *id, double x, double y, double w, double h, char *corb, char *corp, char *expb){
 
     FormaGeometrica *novaForma = (FormaGeometrica*)malloc(sizeof(FormaGeometrica));
 
@@ -26,7 +26,7 @@ FormaGeometricaGenerica formularRetangulo(int id, double x, double y, double w, 
         return NULL;
     }
 
-    novaForma->forma = criarRetangulo(id, x, y, w, h, corb, corp);
+    novaForma->forma = criarRetangulo(id, x, y, w, h, corb, corp, expb);
 
     if (novaForma->forma == NULL) {
         free(novaForma);
@@ -42,27 +42,7 @@ FormaGeometricaGenerica formularRetangulo(int id, double x, double y, double w, 
 }
 
 /*****************************************************************************************************/
-
-FormaGeometricaGenerica formularCirculo(int id, double x, double y, double r, char *corb, char *corp){
-
-    FormaGeometrica *novaForma = (FormaGeometrica*)malloc(sizeof(FormaGeometrica));
-
-    if(novaForma == NULL){
-        printf("Erro: Falha na alocacao de memoria para a criacao da forma do circulo!\n");
-        return NULL;
-    }
-
-    novaForma->forma = criarCirculo(id, x, y, r, corb, corp);
-    novaForma->tipo = 'c';
-    novaForma->x = x;
-    novaForma->y = y;
-
-    return novaForma;
-    
-}
-
-/*****************************************************************************************************/
-
+/*
 FormaGeometricaGenerica formularLinha(int id, double x1, double y1, double x2, double y2, char *c){
 
     FormaGeometrica *novaForma = (FormaGeometrica*)malloc(sizeof(FormaGeometrica));
@@ -79,27 +59,7 @@ FormaGeometricaGenerica formularLinha(int id, double x1, double y1, double x2, d
 
     return novaForma;
 
-}
-
-/*****************************************************************************************************/
-
-FormaGeometricaGenerica formularTexto(int id, double x, double y, char *corb, char *corp, char p, char *t, char *fonte, char *peso, char *tamanho){
-
-    FormaGeometrica *novaForma = (FormaGeometrica*)malloc(sizeof(FormaGeometrica));
-
-    if(novaForma == NULL){
-        printf("Erro: Falha na alocacao de memoria para a criacao da forma do texto!\n");
-        return NULL;
-    }
-    
-    novaForma->forma = criarTexto(id, x, y, corb, corp, p, t, fonte, peso, tamanho);
-    novaForma->tipo = 't';
-    novaForma->x = x;
-    novaForma->y = y;
-
-    return novaForma;
-
-}
+}*/
 
 /*****************************************************************************************************/
 
@@ -133,27 +93,18 @@ char buscarTipoFormaGeometrica(FormaGeometricaGenerica f){
 
 /*****************************************************************************************************/
 
-int buscarIdFormaGeometrica(FormaGeometricaGenerica f){
+char *buscarIdFormaGeometrica(FormaGeometricaGenerica f){
     FormaGeometrica *forma = (FormaGeometrica*)f;
 
-    if (forma == NULL || forma->forma == NULL) return -1;
+    if (forma == NULL || forma->forma == NULL) return NULL;
 
     switch (forma->tipo) {
-        case 'c':
-            return buscarIdCirculo(forma->forma);
-
         case 'r':
             return buscarIdRetangulo(forma->forma);
 
-        case 'l':
-            return buscarIdLinha(forma->forma);
-
-        case 't':
-            return buscarIdTexto(forma->forma);
-
         default:
             fprintf(stderr, "Erro: tipo de forma inválido em buscarIdFormaGeometrica: %c\n", forma->tipo);
-            return -1;
+            return NULL;
     }
 
 }
@@ -209,18 +160,6 @@ void calcularBbFormaGeometrica(FormaGeometricaGenerica f, double *x, double *y, 
             calcularBbRetangulo(forma->forma, x, y, w, h);
             break;
 
-        case 'c':
-            calcularBbCirculo(forma->forma, x, y, w, h);
-            break;
-
-        case 'l':
-            calcularBbLinha(forma->forma, x, y, w, h);
-            break;
-
-        case 't':
-            calcularBbTexto(forma->forma, x, y, w, h);
-            break;
-
         default:
             *x = *y = *w = *h = 0;
             break;
@@ -238,18 +177,6 @@ void desalocarFormaGeometrica(FormaGeometricaGenerica f){
     switch(forma->tipo){
         case 'r':
             desalocarRetangulo(forma->forma);
-            break;
-
-        case 'c':
-            desalocarCirculo(forma->forma);
-            break;
-
-        case 'l':
-            desalocarLinha(forma->forma);
-            break;
-
-        case 't':
-            desalocarTexto(forma->forma);
             break;
 
         default:
@@ -271,15 +198,6 @@ bool formaDentroRegiao(ArvoreGenerica a, NoGenerico n, FormaGeometricaGenerica f
         case 'r':
             return retanguloDentroRegiao(a, n, forma->forma, x1, y1, x2, y2);
 
-        case 'c':
-            return circuloDentroRegiao(a, n, forma->forma, x1, y1, x2, y2);
-
-        case 'l':
-            return linhaDentroRegiao(a, n, forma->forma, x1, y1, x2, y2);
-
-        case 't':
-            return textoDentroRegiao(a, n, forma->forma, x1, y1, x2, y2);
-
         default:
             return false;
     }
@@ -296,15 +214,6 @@ bool pontoInternoforma(ArvoreGenerica a, NoGenerico n, FormaGeometricaGenerica f
         case 'r':
             return pontoInternoRetangulo(a, n, forma->forma, x, y);
 
-        case 'c':
-            return pontoInternoCirculo(a, n, forma->forma, x, y);
-
-        case 'l':
-            return pontoInternoLinha(a, n, forma->forma, x, y);
-
-        case 't':
-            return pontoInternoTexto(a, n, forma->forma, x, y);
-
         default:
             return false;
     }
@@ -320,10 +229,8 @@ double buscarLarguraFormaGeometrica(FormaGeometricaGenerica f){
 
     if(tipo == 'r'){
         return buscarLarguraRetangulo(forma);
-    }else if(tipo == 'c'){
-        return 2 * buscarRaioCirculo(forma);
     }
-
+    
     return 0;
 
 }
@@ -337,8 +244,6 @@ double buscarAlturaFormaGeometrica(FormaGeometricaGenerica f){
 
     if (tipo == 'r'){
         return buscarAlturaRetangulo(buscarFormaGeometrica(forma));
-    }else if (tipo == 'c'){
-        return 2 * buscarRaioCirculo(buscarFormaGeometrica(forma));
     }
 
     return 0;
@@ -353,54 +258,10 @@ int tipoFormaParaDescritor(char tipo){
         case 'r': 
             return 1;
 
-        case 'c': 
-            return 2;
-
-        case 'l': 
-            return 3;
-
-        case 't':
-            return 4;
-
         default: 
             return -1; 
     }
 
-}
-
-/*****************************************************************************************************/
-
-FormaGeometricaGenerica clonarForma(FormaGeometricaGenerica f, double dx, double dy, char* novaCorBorda, char* novaCorPreenchimento){
-
-    FormaGeometrica *forma = (FormaGeometrica*)f;
-
-    char tipo = buscarTipoFormaGeometrica(forma);
-    int id = buscarIdFormaGeometrica(forma);
-    double x = buscarCoordXFormaGeometrica(forma);
-    double y = buscarCoordYFormaGeometrica(forma);
-
-    void* dados = buscarFormaGeometrica(forma); // acesso genérico para o conteúdo real
-
-    switch(tipo){
-        case 'r':{
-            double w = buscarLarguraRetangulo(dados);
-            double h = buscarAlturaRetangulo(dados);
-            return formularRetangulo(id, x + dx, y + dy, w, h, novaCorBorda, novaCorPreenchimento);
-        }
-        case 'c':{
-            double r = buscarRaioCirculo(dados);
-            return formularCirculo(id, x + dx, y + dy, r, novaCorBorda, novaCorPreenchimento);
-        }
-        case 'l':{
-            return formularLinha(id, buscarX1Linha(dados) + dx, buscarY1Linha(dados) + dy, buscarX2Linha(dados) + dx, buscarY2Linha(dados) + dy, novaCorBorda);
-        }
-        case 't':{
-            return formularTexto(id, x + dx, y + dy, novaCorBorda, novaCorPreenchimento, buscarPeriodoAncoraTexto(f), buscarTextoTexto(f), buscarFonteTexto(f), buscarPesoTexto(f), buscarTamanhoTexto(f));
-        }
-        default:
-            return NULL;
-    }
-    
 }
 
 /*****************************************************************************************************/
@@ -411,16 +272,6 @@ char *buscarCorBordaFormaGeometrica(FormaGeometricaGenerica f){
 
     switch(forma->tipo){
         case 'r': 
-            return buscarCorBordaRetangulo(buscarFormaGeometrica(forma));
-
-        case 'c': 
-            return buscarCorBordaCirculo(buscarFormaGeometrica(forma));
-
-        case 'l': 
-            return buscarCorLinha(buscarFormaGeometrica(forma));
-
-        case 't': 
-            return buscarCorBordaTexto(buscarFormaGeometrica(forma));
 
         default: 
             return "none";
@@ -438,15 +289,6 @@ char *buscarCorPreenchimentoFormaGeometrica(FormaGeometricaGenerica f){
         case 'r': 
             return buscarCorPreenchimentoRetangulo(buscarFormaGeometrica(forma));
 
-        case 'c': 
-            return buscarCorPreenchimentoCirculo(buscarFormaGeometrica(forma));
-
-        case 'l': 
-            return buscarCorLinha(buscarFormaGeometrica(forma));
-
-        case 't': 
-            return buscarCorPreenchimentoTexto(buscarFormaGeometrica(forma));
-
         default: 
             return "none";
     }
@@ -454,3 +296,33 @@ char *buscarCorPreenchimentoFormaGeometrica(FormaGeometricaGenerica f){
 }
 
 /*****************************************************************************************************/
+
+char *buscarExpessuraBordaFormaGeometrica(FormaGeometricaGenerica f){
+
+    FormaGeometrica *forma = (FormaGeometrica*)f;
+
+    switch(forma->tipo){
+        case 'r':
+            return buscarExpessuraBordaRetangulo(forma);
+
+        default:
+            return "none";
+    }
+
+}
+
+/*****************************************************************************************************/
+
+void mudarExpessuraBordaFormaGeometrica(FormaGeometricaGenerica f, char *expb){
+
+    FormaGeometrica *forma = (FormaGeometrica*)f;
+
+    switch(forma->tipo){
+        case 'r':
+            mudarExpessuraBordaRetangulo(forma, expb);
+            break;
+        default:
+            break;
+    }
+
+}

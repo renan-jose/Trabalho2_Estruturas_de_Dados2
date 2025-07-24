@@ -39,12 +39,6 @@ struct Vertice{
 
 };
 
-struct BoundingBox{
-
-    double x, y, w, h;
-
-};
-
 /* A aresta do grafo possui dados importantes (que podem ser manipulados depois), um vértice 
  * destino e um apontamento para a próxima aresta. */
 struct Aresta{
@@ -52,7 +46,6 @@ struct Aresta{
     Info dados;
     Node destino;
     bool ativa;
-    struct BoundingBox boundingBox;
     struct Aresta *proxima; // Próxima aresta na lista de adjacência
 
 };
@@ -85,7 +78,6 @@ struct Grafo{
 
 // Nomes alternativos para os tipos de dados existentes.
 typedef struct Vertice Vertice;
-typedef struct BoundingBox BoundingBox;
 typedef struct Aresta Aresta;
 typedef struct Grafo Grafo;
 typedef struct Subgrafo Subgrafo;
@@ -94,8 +86,8 @@ typedef struct Subgrafo Subgrafo;
 
 Graph createGraph(int nVert, bool directed, char *nome){
 
-    if(nVert <= 0){
-        printf("Erro: O numero de vertices maximos do grafo nao deve ser negativo ou igual a zero!\n");
+    if(nVert < 0){
+        printf("Erro: O numero de vertices maximos do grafo nao deve ser negativo!\n");
         return NULL;
     }
 
@@ -377,10 +369,6 @@ Edge addEdge(Graph g, Node from, Node to, Info info){
     novaAresta->destino = to;
     novaAresta->dados = info;
     novaAresta->ativa = true;
-    novaAresta->boundingBox.x = 1;
-    novaAresta->boundingBox.y = 1;
-    novaAresta->boundingBox.w = 1;
-    novaAresta->boundingBox.h = 1;
 
     Aresta *auxiliar =  grafo->vertices[from]->adjacentes;
 
@@ -670,19 +658,6 @@ void getEdges(Graph g, Lista arestas){
 ////////////////////////////////////////////////////////////////////////////////////////
 
 // Função auxiliar.
-void calcularBbAresta(Edge e, double *x, double *y, double *w, double *h){
-
-    Aresta *aresta = (Aresta*)e;
-
-    *x = aresta->boundingBox.x;
-    *y = aresta->boundingBox.y;
-    *w = aresta->boundingBox.w;
-    *h = aresta->boundingBox.h;
-
-}
-
-
-// Função auxiliar.
 static void dfsAuxiliar(Graph g, Node node, int *tempo, int *visitado, int *descoberto, int *finalizado, procEdge treeEdge , procEdge forwardEdge, procEdge returnEdge, procEdge crossEdge, void *extra){
 
     Grafo *grafo = (Grafo*)g;
@@ -777,10 +752,10 @@ bool bfs(Graph g, Node node, procEdge discoverNode, void *extra){
     int tempo = 0;
 
     vetorVisitado[node] = 1;
-    enfileirar(fila, node);
+    enfileirar(fila, (void *)(long)node);
 
     while(filaVazia(fila) == false){
-        Node id = desenfileirar(fila);
+        Node id = (Node)(long)desenfileirar(fila);
         Aresta *auxiliar = grafo->vertices[id]->adjacentes;
 
         while(auxiliar != NULL){
@@ -798,7 +773,7 @@ bool bfs(Graph g, Node node, procEdge discoverNode, void *extra){
                     free(vetorVisitado);
                     return false;
                 }
-                enfileirar(fila, destino);
+                enfileirar(fila, (void *)(long)destino);
             }
 
             auxiliar = auxiliar->proxima;
@@ -838,9 +813,8 @@ void killDG(Graph g){
         free(grafo->vertices[i]);
     }
     
-    /* A lista de vértices e subgrafos do grafo é desalocada. */
+    /* A lista de vértices do grafo é desalocada. */
     free(grafo->vertices);
-    free(grafo->subgrafos);
 
     /* A tabela com o id dos vértices do grafo é desalocada. */
     desalocarTabela(grafo->idVertices);
@@ -987,8 +961,8 @@ void createSubgraphDG(Graph g, char *nomeSubgrafo, char *nomesVerts[], int nVert
     /* Acesso para os campos da struct Grafo. */
     Grafo *grafo = (Grafo*)g;
 
-    if(nVert <= 0){
-        printf("Erro: O numero de vertices maximos do subgrafo nao deve ser negativo ou igual a zero!\n");
+    if(nVert < 0){
+        printf("Erro: O numero de vertices maximos do subgrafo nao deve ser negativo!\n");
         return;
     }
 
@@ -1152,33 +1126,41 @@ void adjacentEdgesSDG(Graph g, char *nomeSubgrafo, Node node, Lista arestasAdjac
 
 ////////////////////////////////////////////////////////////////////////////////////////
 
-void getAllNodesSDG(Graph g, char *nomeSubgrafo, Lista lstNodes){
+// Edit: correção q evita falha na segmentação
 
+void getAllNodesSDG(Graph g, char *nomeSubgrafo, Lista lstNodes) {
     Grafo *grafo = (Grafo*)g;
 
-    Subgrafo *subgrafo = buscarElementoTabela(grafo->subgrafos, nomeSubgrafo);
-    int i;
+    if (!grafo || !nomeSubgrafo || !lstNodes) return;
 
-    for(i = 0; i < subgrafo->qtdVertices; i++){
+    Subgrafo *subgrafo = buscarElementoTabela(grafo->subgrafos, nomeSubgrafo);
+    if (!subgrafo || subgrafo->qtdVertices <= 0 || !subgrafo->vertices) return;
+
+    for (int i = 0; i < subgrafo->qtdVertices; i++) {
         inserirInicioLista(lstNodes, subgrafo->vertices[i]);
     }
-
 }
+
 
 ////////////////////////////////////////////////////////////////////////////////////////
 
-void getAllEdgesSDG(Graph g, char *nomeSubgrafo, Lista lstEdges){
+// Edit: correção q evita falha na segmentação
 
+void getAllEdgesSDG(Graph g, char *nomeSubgrafo, Lista lstEdges) {
     Grafo *grafo = (Grafo*)g;
-    
+
+    if (!grafo || !nomeSubgrafo || !lstEdges) return;
+
     Subgrafo *subgrafo = buscarElementoTabela(grafo->subgrafos, nomeSubgrafo);
-    int i;
+    if (!subgrafo || subgrafo->qtdVertices <= 0 || !subgrafo->arestas) return;
 
-    for(i = 0; i < subgrafo->qtdVertices; i++){
-        inserirInicioLista(lstEdges, subgrafo->arestas[i]);
+    for (int i = 0; i < subgrafo->qtdVertices; i++) {
+        if (subgrafo->arestas[i]) {
+            inserirInicioLista(lstEdges, subgrafo->arestas[i]);
+        }
     }
-
 }
+
 
 ////////////////////////////////////////////////////////////////////////////////////////
 
@@ -1257,3 +1239,39 @@ void desativarAresta(Graph g, Edge e){
     aresta->ativa = false;
     
 }
+
+////////////////////////////////////////////////////////////////////////////////////////
+
+Node includeNodeSDG(Graph g, char *nomeSubgrafo, Node node){
+
+    Grafo *grafo = (Grafo*)g;
+
+    Subgrafo *subgrafo = buscarElementoTabela(grafo->subgrafos, nomeSubgrafo);
+
+    if(subgrafo == NULL){
+        printf("Aviso: O subgrafo nao foi encontrado no grafo!\n");
+        return -1;
+    }
+
+    Vertice *vertice = buscarEstruturaVertice(g, node);
+
+    subgrafo->vertices[subgrafo->qtdVertices] = vertice;
+    subgrafo->qtdVertices++;
+
+    return vertice->id;
+
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+
+bool subgraphExisteEValido(Graph g, char *nomeSubgrafo) {
+    Grafo *grafo = (Grafo*)g;
+
+    if (!grafo || !nomeSubgrafo) return false;
+
+    Subgrafo *sub = buscarElementoTabela(grafo->subgrafos, nomeSubgrafo);
+    if (!sub || sub->qtdVertices <= 0 || !sub->vertices) return false;
+
+    return true;
+}
+

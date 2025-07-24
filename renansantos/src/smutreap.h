@@ -9,7 +9,7 @@
  * Assim como qualquer Treap, a SmuTreap associa a cada nó inserido na árvore 
  * uma prioriodade. A SmuTreap permite que esta prioridade seja alterada
  * posteriormente, por dois meios:
- * (a) diretamente pelas operações promoteNodeSmuT e demoteNodeSmuT;
+ * (a) diretamente pelas operações promoteNodiSmuT e demoteNodiSmuT;
  * (b) indiretamente pela frequência com que o nó é selecionado.
  *
  * Em relação ao item (b), dois parâmetros, informados na criação da árvore, são 
@@ -55,24 +55,24 @@
  */
 
 typedef void* SmuTreap;
-typedef void* Node;
+typedef void* Nodi;
 typedef void* Info;
 typedef int DescritorTipoInfo;
 
-typedef bool (*FdentroDeRegiao)(SmuTreap t, Node n, Info i, double x1, double y1, double x2, double y2);
+typedef bool (*FdentroDeRegiao)(SmuTreap t, Nodi n, Info i, double x1, double y1, double x2, double y2);
 /*
  * Uma função deste tipo deve retornar verdadeiro se a informacao i está
  * "dentro" da região retangular delimitada pelos pontos opostos (x1,y1) e (x2,y2).
  * Retorna falso, caso contrário.
  */
 
-typedef bool (*FpontoInternoAInfo)(SmuTreap t, Node n, Info i, double x, double y);
+typedef bool (*FpontoInternoAInfo)(SmuTreap t, Nodi n, Info i, double x, double y);
 /*
  * Uma função deste tipo deve retornar verdadeiro se o ponto (x,y)
  * deva ser considerado "interno" à informação i.
  */
 
-typedef void (*FvisitaNo)(SmuTreap t, Node n, Info i, double x, double y, void* aux);
+typedef void (*FvisitaNo)(SmuTreap t, Nodi n, Info i, double x, double y, void* aux);
 /*
  * Processa a informação i associada a um nó da árvore, cuja âncora
  * é o ponto (x,y). O parâmetro aux aponta para conjunto de dados
@@ -87,7 +87,7 @@ typedef void (*FCalculaBoundingBox)(Info i, double *x, double *y, double *w, dou
  * do retângulo.
  */
 
-typedef bool (*FsearchNo)(SmuTreap t, Node n, Info i, double x, double y, void* aux);
+typedef bool (*FsearchNo)(SmuTreap t, Nodi n, Info i, double x, double y, void* aux);
 /*
  * Verifica se a informaçao i associada a um nó da árvore, cuja âncora é o ponto (x,y),
  * é a informaçao procurada. Retorna verdadeiro, em caso afirmativo; falso, caso contrário. 
@@ -105,7 +105,7 @@ SmuTreap newSmuTreap(int hitCount, double promotionRate, double epsilon, int pri
  * do nó.
  */
 
-Node insertSmuT(SmuTreap t, double x, double y, Info i, DescritorTipoInfo d, FCalculaBoundingBox fCalcBb);
+Nodi insertSmuT(SmuTreap t, double x, double y, Info i, DescritorTipoInfo d, FCalculaBoundingBox fCalcBb);
 /*
  * Insere a informação i, associada à âncora (x,y) na árvore t.
  * d é um valor (definido pela aplicação) que identifica, caso existam várias
@@ -114,31 +114,31 @@ Node insertSmuT(SmuTreap t, double x, double y, Info i, DescritorTipoInfo d, FCa
  * Retorna um indicador para o nó inserido.
  */
 
-Node getNodeSmuT(SmuTreap t, double x, double y);
+Nodi getNodiSmuT(SmuTreap t, double x, double y);
 /* 
  * Retorna o nó cuja âncora seja o ponto (x,y), admitida a discrepância
  * epsilon definida na criação da árvore. Retorna NULL caso não tenha 
  * encontrado o nó.
  */
 
-DescritorTipoInfo getTypeInfoSmuT(SmuTreap t, Node n);
+DescritorTipoInfo getTypeInfoSmuT(SmuTreap t, Nodi n);
 /* 
  * Retorna o tipo da informação associada ao nó n.
  */
 
-void promoteNodeSmuT(SmuTreap t, Node n, double promotionRate);
+void promoteNodiSmuT(SmuTreap t, Nodi n, double promotionRate);
 /*
  * Aumenta a prioridade do nó n pelo fator promotionRate.
  */
 
-void removeNoSmuT(SmuTreap t, Node n);
+void removeNoSmuT(SmuTreap t, Nodi n);
 /*
  * Remove o nó n da árvore. O nó n deve ser um nó valido.
  */
 
-bool getNodesDentroRegiaoSmuT(SmuTreap t, double x1, double y1, double x2, double y2, Lista L);
+bool getNodisDentroRegiaoSmuT(SmuTreap t, double x1, double y1, double x2, double y2, Lista L);
 /* 
- * Insere na lista L os nós (Node) da árvore t cujas âncoras estao dentro da região 
+ * Insere na lista L os nós (Nodi) da árvore t cujas âncoras estao dentro da região 
  * delimitada pelos pontos (x1,y1) e (x2,y2). Retorna falso, caso não existam nós 
  * dentro da região; verdadeiro, caso contrário.
  */
@@ -159,12 +159,12 @@ bool getInfosAtingidoPontoSmuT(SmuTreap t, double x, double y, FpontoInternoAInf
  * internas; verdadeiro, caso contrário.
  */
 
-Info getInfoSmuT(SmuTreap t, Node n);
+Info getInfoSmuT(SmuTreap t, Nodi n);
 /* 
  * Retorna a informação associada ao nó n.
  */
 
-Info getBoundingBoxSmuT(SmuTreap t, Node n, double *x, double *y, double *w, double *h);
+Info getBoundingBoxSmuT(SmuTreap t, Nodi n, double *x, double *y, double *w, double *h);
 /* 
  * Retorna o bounding box associado ao nó n 
  */
@@ -181,7 +181,7 @@ void visitaLarguraSmuT(SmuTreap t, FvisitaNo f, void* aux);
  * Similar a visitaProfundidadeSmuT, porém, faz o percurso em largura.
  */ 
 
-Node procuraNoSmuT(SmuTreap t, FsearchNo f, void* aux);
+Nodi procuraNoSmuT(SmuTreap t, FsearchNo f, void* aux);
 /*
  * Procura o nó da árvore que contenha um dado específico. Visita cada nó 
  * da árvore e invoca a função f. A função f retornará verdadeiro se o nó 

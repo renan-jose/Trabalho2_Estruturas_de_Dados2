@@ -369,4 +369,8 @@ void ativarAresta(Graph g, Edge e);
 /* Explicar depois */
 void desativarAresta(Graph g, Edge e);
 
+Node includeNodeSDG(Graph g, char *nomeSubgrafo, Node node);
+
+bool subgraphExisteEValido(Graph g, char *nomeSubgrafo);
+
 #endif 

@@ -2,7 +2,7 @@
 PROJ_NAME = ted
 ALUNO = renanjose
 LIBS = -lm
-OBJETOS = main.o smutreap.o lista.o fila.o forma.o retangulo.o circulo.o linha.o texto.o armazenamento.o processamento.o tag.o arquivo.o
+OBJETOS = main.o graph.o smutreap.o lista.o fila.o espalhamento.o arquivo.o forma.o retangulo.o processamento.o tag.o prioridade.o
         
 # Compilador
 CC = gcc
@@ -18,22 +18,17 @@ $(PROJ_NAME): $(OBJETOS)
 	$(CC) -c $(CFLAGS) $< -o $@
 
 # Dependências de cada módulo
-main.o: main.c armazenamento.h processamento.h smutreap.h arquivo.h
+main.o: main.c graph.h espalhamento.h arquivo.h processamento.h
 
+graph.o: graph.c graph.h espalhamento.h fila.h
 smutreap.o: smutreap.c smutreap.h lista.h fila.h
 lista.o: lista.c lista.h 
 fila.o: fila.c fila.h
+prioridade.o: prioridade.c prioridade.h
+espalhamento.o: espalhamento.c espalhamento.h
 
-forma.o: forma.c forma.h retangulo.h circulo.h linha.h texto.h
-retangulo.o: retangulo.c retangulo.h 
-circulo.o: circulo.c circulo.h 
-linha.o: linha.c linha.h smutreap.h
-texto.o: texto.c texto.h smutreap.h
-
-armazenamento.o: armazenamento.c armazenamento.h forma.h smutreap.h arquivo.h
-processamento.o: processamento.c processamento.h smutreap.h forma.h arquivo.h tag.h
-tag.o: tag.c tag.h forma.h
-
+processamento.o: processamento.c processamento.h tag.h lista.h arquivo.h prioridade.h
+tag.o: tag.c tag.h
 arquivo.o: arquivo.c arquivo.h tag.h smutreap.h
 
 # Empacota o projeto em um .zip para entrega, incluindo código-fonte, Makefile e LEIA-ME
@@ -45,4 +40,3 @@ pack: $(PROJ_NAME)
 
 clean:
 	rm -f *.o $(PROJ_NAME)
-

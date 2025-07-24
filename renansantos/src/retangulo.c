@@ -9,9 +9,9 @@
 
 struct Retangulo{
  
-    int id;
+    char *id;
     double x, y, w, h;
-    char *corb, *corp;
+    char *corb, *corp, *expb;
 
 };
 
@@ -19,7 +19,7 @@ typedef struct Retangulo Retangulo;
 
 /*****************************************************************************************************/
 
-RetanguloGenerico criarRetangulo(int id, double x, double y, double w, double h, char *corb, char *corp){
+RetanguloGenerico criarRetangulo(char *id, double x, double y, double w, double h, char *corb, char *corp, char *expb){
 
     Retangulo *novoRetangulo = (Retangulo*)malloc(sizeof(Retangulo));
 
@@ -28,7 +28,16 @@ RetanguloGenerico criarRetangulo(int id, double x, double y, double w, double h,
         return NULL;
     }
 
-    novoRetangulo->id = id;
+    novoRetangulo->id = (char*)malloc(strlen(id) + 1);
+
+    if(novoRetangulo->id == NULL){
+        printf("Erro: Falha na alocacao de memoria para a criacao do retangulo!\n");
+        free(novoRetangulo);
+        return NULL;
+    }
+
+    strcpy(novoRetangulo->id, id);
+    
     novoRetangulo->x = x;
     novoRetangulo->y = y;
     novoRetangulo->w = w;
@@ -37,6 +46,7 @@ RetanguloGenerico criarRetangulo(int id, double x, double y, double w, double h,
     novoRetangulo->corb = (char*)malloc(strlen(corb) + 1);
     if(novoRetangulo->corb == NULL){
         printf("Erro: Falha na alocacao de memoria para a criacao do retangulo!\n");
+        free(novoRetangulo->id);
         free(novoRetangulo);
         return NULL;
     }
@@ -45,11 +55,23 @@ RetanguloGenerico criarRetangulo(int id, double x, double y, double w, double h,
     novoRetangulo->corp = (char*)malloc(strlen(corp) + 1);
     if(novoRetangulo->corp == NULL){
         printf("Erro: Falha na alocacao de memoria para a criacao do retangulo!\n");
+        free(novoRetangulo->id);
         free(novoRetangulo->corb);
         free(novoRetangulo);
         return NULL;
     }
     strcpy(novoRetangulo->corp, corp);
+
+    novoRetangulo->expb = (char*)malloc(sizeof(expb) + 1);
+    if(novoRetangulo->expb == NULL){
+        printf("Erro: Falha na alocacao de memoria para a criacao do retangulo!\n");
+        free(novoRetangulo->id);
+        free(novoRetangulo->corb);
+        free(novoRetangulo->corp);
+        free(novoRetangulo);
+        return NULL;
+    }
+    strcpy(novoRetangulo->expb, expb);
 
     return novoRetangulo;
 
@@ -57,7 +79,7 @@ RetanguloGenerico criarRetangulo(int id, double x, double y, double w, double h,
 
 /*****************************************************************************************************/
 
-int buscarIdRetangulo(RetanguloGenerico r){
+char *buscarIdRetangulo(RetanguloGenerico r){
 
     Retangulo *retangulo = (Retangulo*)r;
 
@@ -256,3 +278,30 @@ bool pontoInternoRetangulo(ArvoreGenerica a, NoGenerico n, RetanguloGenerico r, 
 }
 
 /*****************************************************************************************************/
+
+char *buscarExpessuraBordaRetangulo(RetanguloGenerico r){
+
+    Retangulo *retangulo = (Retangulo*)r;
+
+    return retangulo->expb;
+
+}
+
+/*****************************************************************************************************/
+
+void mudarExpessuraBordaRetangulo(RetanguloGenerico r, char *expb){
+
+    Retangulo *retangulo = (Retangulo*)r;
+
+    free(retangulo->expb);
+
+    retangulo->expb = (char*)malloc(strlen(expb) + 1);
+
+    if(retangulo->expb == NULL){
+        printf("Erro: Falha na alocacao de memoria para a nova expessura da borda do retangulo!\n");
+        return;
+    }
+
+    strcpy(retangulo->expb, expb);
+
+}

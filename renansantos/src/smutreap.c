@@ -68,7 +68,7 @@ SmuTreap newSmuTreap(int hitCount, double promotionRate, double epsilon, int pri
 /*****************************************************************************************************************/
 
 // FUNÇÃO AUXILIAR
-static Node rotacionarEsquerda(Node n){
+static Nodi rotacionarEsquerda(Nodi n){
 
     NoArvore *no = (NoArvore*)n;
 
@@ -88,7 +88,7 @@ static Node rotacionarEsquerda(Node n){
 }
 
 // FUNÇÃO AUXILIAR
-static Node rotacionarDireita(Node n){
+static Nodi rotacionarDireita(Nodi n){
 
     NoArvore *no = (NoArvore*)n;
 
@@ -108,7 +108,7 @@ static Node rotacionarDireita(Node n){
 }
 
 // FUNÇÃO AUXILIAR
-static Node criarNo(SmuTreap t, double x, double y, Info i, DescritorTipoInfo d, FCalculaBoundingBox fCalcBb){
+static Nodi criarNo(SmuTreap t, double x, double y, Info i, DescritorTipoInfo d, FCalculaBoundingBox fCalcBb){
 
     Arvore *arvore = (Arvore*)t;
     NoArvore *novoNo = (NoArvore*)malloc(sizeof(NoArvore));
@@ -141,7 +141,7 @@ static Node criarNo(SmuTreap t, double x, double y, Info i, DescritorTipoInfo d,
 }
 
 // FUNÇÃO AUXILIAR
-static Node inserirNo(SmuTreap t, Node n, double x, double y, Info i, DescritorTipoInfo d, FCalculaBoundingBox fCalcBb){
+static Nodi inserirNo(SmuTreap t, Nodi n, double x, double y, Info i, DescritorTipoInfo d, FCalculaBoundingBox fCalcBb){
 
     Arvore *arvore = (Arvore*)t;
     NoArvore *no = (NoArvore*)n;
@@ -171,7 +171,7 @@ static Node inserirNo(SmuTreap t, Node n, double x, double y, Info i, DescritorT
 }
 
 // FUNÇÃO AUXILIAR
-static void modificarBoundingBox(Node n){
+static void modificarBoundingBox(Nodi n){
 
     NoArvore *no = (NoArvore*)n;
 
@@ -212,7 +212,7 @@ static void modificarBoundingBox(Node n){
 }
 
 // FUNÇÃO AUXILIAR
-static void atualizarBoundingBoxes(Node n){
+static void atualizarBoundingBoxes(Nodi n){
 
     NoArvore *no = (NoArvore*)n;
 
@@ -226,13 +226,13 @@ static void atualizarBoundingBoxes(Node n){
 
 }
 
-Node insertSmuT(SmuTreap t, double x, double y, Info i, DescritorTipoInfo d, FCalculaBoundingBox fCalcBb){
+Nodi insertSmuT(SmuTreap t, double x, double y, Info i, DescritorTipoInfo d, FCalculaBoundingBox fCalcBb){
 
     Arvore *arvore = (Arvore*)t;
 
     arvore->raiz = inserirNo(arvore, arvore->raiz, x, y, i, d, fCalcBb);
 
-    Node n = getNodeSmuT(t, x, y);
+    Nodi n = getNodiSmuT(t, x, y);
 
     NoArvore *novoNo = (NoArvore*)n;
 
@@ -249,7 +249,7 @@ Node insertSmuT(SmuTreap t, double x, double y, Info i, DescritorTipoInfo d, FCa
 /*****************************************************************************************************************/
 
 // FUNCÃO AUXILIAR
-static double calcularDistanciaAncoraPonto(Node n, double x, double y){
+static double calcularDistanciaAncoraPonto(Nodi n, double x, double y){
 
     NoArvore *no = (NoArvore*)n;
 
@@ -260,7 +260,7 @@ static double calcularDistanciaAncoraPonto(Node n, double x, double y){
 }
 
 // FUNÇÃO AUXILIAR
-static Node buscarNo(SmuTreap t, Node n, double x, double y){
+static Nodi buscarNo(SmuTreap t, Nodi n, double x, double y){
 
     Arvore *arvore = (Arvore*)t;
     NoArvore *no = (NoArvore*)n;
@@ -271,7 +271,7 @@ static Node buscarNo(SmuTreap t, Node n, double x, double y){
 
     if(calcularDistanciaAncoraPonto(no, x, y) < arvore->epsilon){
         if(no->qtdSelecionado == arvore->hitcount){
-            promoteNodeSmuT(arvore, no, arvore->promotionRate);
+            promoteNodiSmuT(arvore, no, arvore->promotionRate);
             no->qtdSelecionado = 0;
         }else{
             no->qtdSelecionado++;
@@ -287,10 +287,10 @@ static Node buscarNo(SmuTreap t, Node n, double x, double y){
 
 }
 
-Node getNodeSmuT(SmuTreap t, double x, double y){
+Nodi getNodiSmuT(SmuTreap t, double x, double y){
 
     Arvore *arvore = (Arvore*)t;
-    Node busca = buscarNo(arvore, arvore->raiz, x, y);
+    Nodi busca = buscarNo(arvore, arvore->raiz, x, y);
 
     if(busca == NULL){
         return NULL;
@@ -302,7 +302,7 @@ Node getNodeSmuT(SmuTreap t, double x, double y){
 
 /*****************************************************************************************************************/
 
-DescritorTipoInfo getTypeInfoSmuT(SmuTreap t, Node n){
+DescritorTipoInfo getTypeInfoSmuT(SmuTreap t, Nodi n){
 
     Arvore *arvore = (Arvore*)t;
     NoArvore *no = (NoArvore*)n;
@@ -313,7 +313,7 @@ DescritorTipoInfo getTypeInfoSmuT(SmuTreap t, Node n){
 
 /*****************************************************************************************************************/
 
-void promoteNodeSmuT(SmuTreap t, Node n, double promotionRate){
+void promoteNodiSmuT(SmuTreap t, Nodi n, double promotionRate){
 
     Arvore *arvore = (Arvore*)t;
     NoArvore *no = (NoArvore*)n;
@@ -326,7 +326,7 @@ void promoteNodeSmuT(SmuTreap t, Node n, double promotionRate){
 /*****************************************************************************************************************/
 
 // FUNÇÃO AUXILIAR
-static Node removerNo(SmuTreap t, Node n1, Node n2, double epsilon){
+static Nodi removerNo(SmuTreap t, Nodi n1, Nodi n2, double epsilon){
 
     Arvore *arvore = (Arvore*)t;
     NoArvore *no = (NoArvore*)n1;
@@ -363,11 +363,11 @@ static Node removerNo(SmuTreap t, Node n1, Node n2, double epsilon){
 
 }
 
-void removeNoSmuT(SmuTreap t, Node n){
+void removeNoSmuT(SmuTreap t, Nodi n){
 
     Arvore *arvore = (Arvore*)t;
     NoArvore *no = (NoArvore*)n;
-    NoArvore *noARemover = getNodeSmuT(arvore, no->ancora.x, no->ancora.y);
+    NoArvore *noARemover = getNodiSmuT(arvore, no->ancora.x, no->ancora.y);
 
     if(noARemover != NULL){
         arvore->raiz = removerNo(arvore, arvore->raiz, noARemover, arvore->epsilon);
@@ -377,7 +377,7 @@ void removeNoSmuT(SmuTreap t, Node n){
 
 /*****************************************************************************************************************/
 
-Info getInfoSmuT(SmuTreap t, Node n){
+Info getInfoSmuT(SmuTreap t, Nodi n){
 
     Arvore *arvore = (Arvore*)t;
     NoArvore *no = (NoArvore*)n;
@@ -388,7 +388,7 @@ Info getInfoSmuT(SmuTreap t, Node n){
 
 /*****************************************************************************************************************/
 
-Info getBoundingBoxSmuT(SmuTreap t, Node n, double *x, double *y, double *w, double *h){
+Info getBoundingBoxSmuT(SmuTreap t, Nodi n, double *x, double *y, double *w, double *h){
 
     Arvore *arvore = (Arvore*)t;
     NoArvore *no = (NoArvore*)n;
@@ -420,7 +420,7 @@ bool interseccionaBoundingBox(struct BoundingBox bb, double x1, double y1, doubl
 }
 
 // FUNÇÃO AUXILIAR
-void inserirNoAncoraDentro(SmuTreap t, Node n, double x1, double y1, double x2, double y2, Lista *L){
+void inserirNoAncoraDentro(SmuTreap t, Nodi n, double x1, double y1, double x2, double y2, Lista *L){
 
     Arvore *arvore = (Arvore*)t;
     NoArvore *no = (NoArvore*)n;
@@ -435,7 +435,7 @@ void inserirNoAncoraDentro(SmuTreap t, Node n, double x1, double y1, double x2, 
     double yMenor = fmin(y1, y2);
 
     if((no->ancora.x >= xMenor && no->ancora.x <= xMaior) && (no->ancora.y >= yMenor && no->ancora.y <= yMaior)){
-        listar(L, no);
+        inserirInicioLista(L, no);
     }
 
     double epsilon = getEpsilonSmuTreap(t);
@@ -450,7 +450,7 @@ void inserirNoAncoraDentro(SmuTreap t, Node n, double x1, double y1, double x2, 
 
 }
 
-bool getNodesDentroRegiaoSmuT(SmuTreap t, double x1, double y1, double x2, double y2, Lista L){
+bool getNodisDentroRegiaoSmuT(SmuTreap t, double x1, double y1, double x2, double y2, Lista L){
 
     Arvore *arvore = (Arvore*)t;
 
@@ -460,7 +460,7 @@ bool getNodesDentroRegiaoSmuT(SmuTreap t, double x1, double y1, double x2, doubl
 
     inserirNoAncoraDentro(arvore, arvore->raiz, x1, y1, x2, y2, L);
 
-    if(listaVazia(L) == true){
+    if(buscarTamanhoLista(L) == 0){
         return false;
     }else{
         return true;
@@ -471,7 +471,7 @@ bool getNodesDentroRegiaoSmuT(SmuTreap t, double x1, double y1, double x2, doubl
 /*****************************************************************************************************************/
 
 // FUNÇÃO AUXILIAR
-void inserirNoInfoDentro(SmuTreap t, Node n, double x1, double y1, double x2, double y2, FdentroDeRegiao f, Lista *L){
+void inserirNoInfoDentro(SmuTreap t, Nodi n, double x1, double y1, double x2, double y2, FdentroDeRegiao f, Lista *L){
 
     Arvore *arvore = (Arvore*)t;
     NoArvore *no = (NoArvore*)n;
@@ -481,7 +481,7 @@ void inserirNoInfoDentro(SmuTreap t, Node n, double x1, double y1, double x2, do
     }
 
     if(f(arvore, no, no->informacao, x1, y1, x2, y2) == true){
-        listar(L, no);
+        inserirInicioLista(L, no);
     }
 
     double epsilon = getEpsilonSmuTreap(t);
@@ -506,7 +506,7 @@ bool getInfosDentroRegiaoSmuT(SmuTreap t, double x1, double y1, double x2, doubl
 
     inserirNoInfoDentro(arvore, arvore->raiz, x1, y1, x2, y2, f, L);
 
-    if(listaVazia(L) == true){
+    if(buscarTamanhoLista(L) == 0){
         return false;
     }else{
         return true;
@@ -517,7 +517,7 @@ bool getInfosDentroRegiaoSmuT(SmuTreap t, double x1, double y1, double x2, doubl
 /*****************************************************************************************************************/
 
 // FUNÇÃO AUXILIAR
-void inserirNoPontoDentro(SmuTreap t, Node n, double x, double y, FpontoInternoAInfo f, Lista *L){
+void inserirNoPontoDentro(SmuTreap t, Nodi n, double x, double y, FpontoInternoAInfo f, Lista *L){
 
     Arvore *arvore = (Arvore*)t;
     NoArvore *no = (NoArvore*)n;
@@ -527,7 +527,7 @@ void inserirNoPontoDentro(SmuTreap t, Node n, double x, double y, FpontoInternoA
     }
 
     if(f(arvore, no, no->informacao, x, y) == true){
-        listar(L, no);
+        inserirInicioLista(L, no);
     }
  
     double epsilon = getEpsilonSmuTreap(t);
@@ -552,7 +552,7 @@ bool getInfosAtingidoPontoSmuT(SmuTreap t, double x, double y, FpontoInternoAInf
 
     inserirNoPontoDentro(arvore, arvore->raiz, x , y, f, L);
 
-    if(listaVazia(L) == true){
+    if(buscarTamanhoLista(L) == 0){
         return false;
     }else{
         return true;
@@ -563,7 +563,7 @@ bool getInfosAtingidoPontoSmuT(SmuTreap t, double x, double y, FpontoInternoAInf
 /*****************************************************************************************************************/
 
 // FUNÇÃO AUXILIAR
-void percorrerPreOrdem(SmuTreap t, Node n, FvisitaNo f, void* aux){
+void percorrerPreOrdem(SmuTreap t, Nodi n, FvisitaNo f, void* aux){
 
     Arvore *arvore = (Arvore*)t;
     NoArvore *no = (NoArvore*)n;
@@ -591,7 +591,7 @@ void visitaProfundidadeSmuT(SmuTreap t, FvisitaNo f, void *aux){
 /*****************************************************************************************************************/
 
 // FUNÇÃO AUXILIAR
-void percorrerEmNivel(SmuTreap t, Node n, FvisitaNo f, void* aux){
+void percorrerEmNivel(SmuTreap t, Nodi n, FvisitaNo f, void* aux){
 
     Arvore *arvore = (Arvore*)t;
     NoArvore *no = (NoArvore*)n;
@@ -636,7 +636,7 @@ void visitaLarguraSmuT(SmuTreap t, FvisitaNo f, void *aux){
 /*****************************************************************************************************************/
 
 // FUNÇÃO AUXILIAR
-Node procurarNo(SmuTreap t, Node n, FsearchNo f, void* aux) {
+Nodi procurarNo(SmuTreap t, Nodi n, FsearchNo f, void* aux) {
     Arvore *arvore = (Arvore*)t;
     NoArvore *no = (NoArvore*)n;
 
@@ -650,17 +650,17 @@ Node procurarNo(SmuTreap t, Node n, FsearchNo f, void* aux) {
     }
 
     // Busca na subárvore esquerda
-    Node resEsq = procurarNo(arvore, no->esquerdo, f, aux);
+    Nodi resEsq = procurarNo(arvore, no->esquerdo, f, aux);
     if (resEsq != NULL) {
         return resEsq;
     }
 
     // Busca na subárvore direita
-    Node resDir = procurarNo(arvore, no->direito, f, aux);
+    Nodi resDir = procurarNo(arvore, no->direito, f, aux);
     return resDir;
 }
 
-Node procuraNoSmuT(SmuTreap t, FsearchNo f, void *aux){
+Nodi procuraNoSmuT(SmuTreap t, FsearchNo f, void *aux){
 
     Arvore *arvore = (Arvore*)t;
 
@@ -671,7 +671,7 @@ Node procuraNoSmuT(SmuTreap t, FsearchNo f, void *aux){
 /*****************************************************************************************************************/
 
 // FUNÇÃO AUXILIAR
-char *definirCorNo(Node n){
+char *definirCorNo(Nodi n){
 
     NoArvore *no = (NoArvore*)n;
 
@@ -695,7 +695,7 @@ char *definirCorNo(Node n){
 }
 
 // FUNÇÃO AUXILIAR
-void imprimirConexoesDot(SmuTreap t, Node n, FILE *arquivo){
+void imprimirConexoesDot(SmuTreap t, Nodi n, FILE *arquivo){
 
     Arvore *arvore = (Arvore*)t;
     NoArvore *no = (NoArvore*)n;
@@ -736,7 +736,7 @@ bool printDotSmuTreap(SmuTreap t, char *fn){
     }
     
     fprintf(arquivo, "digraph SmuTreap{\n");
-    fprintf(arquivo, "\tnode [shape=record];\n");
+    fprintf(arquivo, "\tNodi [shape=record];\n");
     imprimirConexoesDot(arvore, arvore->raiz, arquivo);
     fprintf(arquivo, "}\n");
 
@@ -749,7 +749,7 @@ bool printDotSmuTreap(SmuTreap t, char *fn){
 /*****************************************************************************************************************/
 
 // FUNÇÃO AUXILIAR
-void liberarMemoriaNo(Node n){
+void liberarMemoriaNo(Nodi n){
 
     NoArvore *no = (NoArvore*)n;
 

@@ -22,6 +22,8 @@ Lista inicializarLista();
 /* Insere um dado genérico (qualquer tipo) no início da lista. */
 void inserirInicioLista(Lista, DadoGenerico);
 
+void inserirFimLista(Lista, DadoGenerico);
+
 
 /* Remoções */
 
@@ -37,6 +39,8 @@ int buscarTamanhoLista(Lista);
 /* Retorna verdadeiro se o dado estiver na lista. */
 bool verificarElementoLista(Lista, DadoGenerico);
 
+/* Retorna o dado armazenado na posição indicada da lista. */
+DadoGenerico buscarElementoLista(Lista, int);
 
 /* Desalocação */
 

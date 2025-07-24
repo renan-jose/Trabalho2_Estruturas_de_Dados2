@@ -14,12 +14,12 @@ typedef void* NoGenerico;
 
 /* Cria um retângulo com identificador id: (x,y) é a âncora do retângulo, w é a largura do retângulo e h, 
  * a altura. corb é a cor da borda e corp é a cor do preenchimento. */
-RetanguloGenerico criarRetangulo(int id, double x, double y, double w, double h, char *corb, char *corp);
+RetanguloGenerico criarRetangulo(char *id, double x, double y, double w, double h, char *corb, char *corp, char *expb);
 
 /* Buscas */
 
 /* Retorna o identificador do retângulo. */
-int buscarIdRetangulo(RetanguloGenerico);
+char *buscarIdRetangulo(RetanguloGenerico);
 
 /* Retorna a coordenada X da âncora do retângulo. */
 double buscarCoordXRetangulo(RetanguloGenerico);
@@ -38,6 +38,9 @@ char *buscarCorBordaRetangulo(RetanguloGenerico);
 
 /* Retorna a cor de preenchimento do retângulo. */
 char *buscarCorPreenchimentoRetangulo(RetanguloGenerico);
+
+/* Retorna a expessura da borda do retângulo. */
+char *buscarExpessuraBordaRetangulo(RetanguloGenerico);
 
 /* Modificações */
 
@@ -58,6 +61,9 @@ void mudarCorBordaRetangulo(RetanguloGenerico, char *);
 
 /* Altera a cor de preenchimento do retângulo. */
 void mudarCorPreenchimentoRetangulo(RetanguloGenerico, char *);
+
+/* Altera a expessura da borda do retângulo. */
+void mudarExpessuraBordaRetangulo(RetanguloGenerico, char *);
 
 /* Utilitários */
 

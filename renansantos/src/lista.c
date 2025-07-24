@@ -60,6 +60,38 @@ void inserirInicioLista(Lista l, DadoGenerico n){
 
 /*****************************************************************************************************/
 
+void inserirFimLista(Lista l, DadoGenerico n){
+
+    EstruturaLista *lista = (EstruturaLista*)l;
+
+    No *novoNo = (No*)malloc(sizeof(No));
+
+    if(novoNo == NULL){
+        printf("Erro: Falha na alocacao de memoria para a insercao do valor na lista!\n");
+        return;
+    }
+
+    novoNo->dado = n;
+    novoNo->proximo = NULL;
+
+    if(lista->inicio == NULL){
+        lista->inicio = novoNo;
+    }else{
+        No *atual = lista->inicio;
+
+        while(atual->proximo != NULL){
+            atual = atual->proximo;
+        }
+
+        atual->proximo = novoNo;
+    }
+
+    lista->tamanho++;
+
+}
+
+/*****************************************************************************************************/
+
 void removerInicioLista(Lista l){
 
     EstruturaLista *lista = (EstruturaLista*)l;
@@ -103,6 +135,26 @@ bool verificarElementoLista(Lista l, DadoGenerico d){
     }
 
     return false;
+
+}
+
+/*****************************************************************************************************/
+
+DadoGenerico buscarElementoLista(Lista L, int posicao){
+
+    EstruturaLista *lista = (EstruturaLista*)L;
+
+    if(posicao < 0 || posicao >= lista->tamanho){
+        return NULL; 
+    }
+
+    No *auxiliar = lista->inicio;
+
+    for(int i = 0; i < posicao; i++){
+        auxiliar = auxiliar->proximo;
+    }
+
+    return auxiliar->dado;
 
 }
 
