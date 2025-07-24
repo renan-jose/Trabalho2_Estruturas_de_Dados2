@@ -124,13 +124,6 @@ char *buscarCaminhoSvgConsulta(ParametrosGenericos);
  */
 char *buscarCaminhoTxtConsulta(ParametrosGenericos);
 
-
-char *buscarNomeGrafo(ParametrosGenericos);
-
-int buscarLimiteVertices(ParametrosGenericos);
-
-bool buscarDirecionado(ParametrosGenericos);
-
 /* Utilitários */
 
 /* Verifica se foi especificado um arquivo .qry.
