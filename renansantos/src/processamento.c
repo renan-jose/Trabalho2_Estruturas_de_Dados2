@@ -6,9 +6,12 @@
 #include "espalhamento.h"
 #include "graph.h"
 #include "smutreap.h"
+#include "prioridade.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
+#include <stdint.h>
 
 ////////////////////////////////////////////////////////////////////////////////////////
 
@@ -268,6 +271,8 @@ static Posicao encontrarPosicao(TabelaGenerica t, char *cep, char *face, double 
 
 }
 
+////////////////////////////////////////////////////////////////////////////////////////
+
 static void processarArrobaOInterrogacao(TabelaGenerica t, char *linha, FILE *arquivoSvg, FILE *arquivoTxt, Posicao *registradores){
 
     int numeroRegistrador;
@@ -449,6 +454,49 @@ static void processarSg(Graph g, SmuTreap t, char *linha, FILE *arquivoSvg){
     desalocarTabela(tabelaVertices);
     
 }
+
+////////////////////////////////////////////////////////////////////////////////////////
+
+static double calcularDistancia(Graph g, Node a, Node b){
+
+    DadosVertice *dadosVertice1 = (DadosVertice*)getNodeInfo(g, a);
+    DadosVertice *dadosVertice2 = (DadosVertice*)getNodeInfo(g, b);
+
+    double x = dadosVertice1->x - dadosVertice2->x;
+    double y = dadosVertice1->y- dadosVertice2->y;
+
+    return sqrt((x * x) + (y * y));
+
+}
+
+static bool relaxarAresta(Graph g, Node verticeAtual, Node verticeVizinho, Edge aresta, TabelaGenerica custo, TabelaGenerica pai, FilaPrioridadeGenerica fila, Node destino){
+
+    char *idAtual = getNodeName(g, verticeAtual);
+    char *idVizinho = getNodeName(g, verticeVizinho);
+
+    double custoAtual = (double)(intptr_t)buscarElementoTabela(custo, idAtual);
+    DadosAresta *dadosAresta = (DadosAresta*)getEdgeInfo(g, aresta);
+    double novoCusto = custoAtual + dadosAresta->cmp;
+
+    void *custoExistente = buscarElementoTabela(custo, idVizinho);
+    if(custoExistente == NULL || novoCusto < (double)(intptr_t)custoExistente){
+        double distancia = calcularDistancia(g, verticeVizinho, destino);
+        double f = novoCusto + distancia;
+
+        inserirFilaPrioridade(fila, verticeVizinho, f);
+        inserirElementoTabela(custo, idVizinho, (void *)(intptr_t)novoCusto);
+        inserirElementoTabela(pai, idVizinho, idAtual);
+
+        return true;
+
+    }
+
+    return false;
+
+}
+
+static void processarPInterrogacao(){}
+
 
 ////////////////////////////////////////////////////////////////////////////////////////
 
