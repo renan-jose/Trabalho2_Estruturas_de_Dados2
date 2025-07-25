@@ -17,18 +17,20 @@ void tagRetangulo(FILE* arquivo, FormaGeometricaGenerica forma){
 
 ////////////////////////////////////////////////////////////////////////////////////////
 
-void tagCabecalho(FILE* arquivo){
-
-    if(arquivo == NULL){
+void tagCabecalho(FILE* arquivo) {
+    if (arquivo == NULL) {
         printf("Erro: Nao foi possivel inserir a tag do cabecalho no arquivo svg!\n");
         return;
     }
 
-    // Primeira linha obrigatória para arquivos SVG bem formados
     fprintf(arquivo, "<?xml version='1.0' encoding='UTF-8'?>\n");
-    // Tag de abertura correta do SVG
-    fprintf(arquivo, "<svg xmlns='http://www.w3.org/2000/svg' version='1.1' "
-    "width='100%%' height='200%%' viewBox='0 0 4000 12000'>\n");
+    fprintf(arquivo,
+    "<svg xmlns='http://www.w3.org/2000/svg' version='1.1' width='200' height='200' viewBox='0 0 2000 2000'>\n"
+    "<defs>\n"
+    "  <marker id='arrow' markerWidth='10' markerHeight='7' refX='10' refY='3.5' orient='auto'>\n"
+    "    <polygon points='0 0, 10 3.5, 0 7' fill='black'/>\n"
+    "  </marker>\n"
+    "</defs>\n");
 
 }
 

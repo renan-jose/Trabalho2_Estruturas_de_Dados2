@@ -9,6 +9,8 @@
 #ifndef _ESPALHAMENTO_H_
 #define _ESPALHAMENTO_H_
 
+#include <stdbool.h>
+
 // Nomes alternativos para os tipos de dados existentes.
 typedef void* TabelaGenerica; // Representa uma tabela de espalhamento ao todo.
 typedef void* DadoGenerico; // Representa um dado de um tipo qualquer a ser armazenado na tabela de espalhamento.
@@ -56,6 +58,16 @@ int removerElementoTabela(TabelaGenerica, char *);
  *  - elemento da tabela de espalhamento encontrado (tipo DadoGenerico).*/
 DadoGenerico buscarElementoTabela(TabelaGenerica, char *);
 
+
+bool buscarElementoTabelaComValor(TabelaGenerica, char *, DadoGenerico *);
+
+
+int buscarTamanhoTabela(TabelaGenerica);
+
+
+void percorrerTabela(TabelaGenerica t, void (*callback)(DadoGenerico, void*), void *extra);
+
+bool temNaTabela(TabelaGenerica, char *);
 
 // Desalocação
 

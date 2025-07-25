@@ -140,23 +140,25 @@ bool verificarElementoLista(Lista l, DadoGenerico d){
 
 /*****************************************************************************************************/
 
-DadoGenerico buscarElementoLista(Lista L, int posicao){
+DadoGenerico buscarElementoLista(Lista l, int posicao){
 
-    EstruturaLista *lista = (EstruturaLista*)L;
+    EstruturaLista *lista = (EstruturaLista*)l;
 
-    if(posicao < 0 || posicao >= lista->tamanho){
-        return NULL; 
+    if (!lista || posicao < 0 || posicao >= lista->tamanho || lista->inicio == NULL){
+        return NULL;
     }
 
     No *auxiliar = lista->inicio;
 
     for(int i = 0; i < posicao; i++){
+        if (!auxiliar) return NULL;
         auxiliar = auxiliar->proximo;
     }
 
-    return auxiliar->dado;
+    return auxiliar ? auxiliar->dado : NULL;
 
 }
+
 
 /*****************************************************************************************************/
 

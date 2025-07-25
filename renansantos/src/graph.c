@@ -26,6 +26,12 @@
 /* OBS (Tirar depois): A struct com os dados do vértice e da aresta vão estar em outro .c,
  * e daí usamos o info daqui para passar como parâmetro. */
 
+struct Ancora{
+     
+    double x, y;
+
+};
+
 /* O vértice do grafo possui um nome, dados importantes (que podem ser manipulados depois), 
  * um id (que na verdade é a origem) e um apontamento para o 1° elemento da sua lista de
  * arestas adjacentes. */
@@ -33,9 +39,10 @@ struct Vertice{
 
     char *nome;
     Info dados;
-    Node id;
+    //Node id;
     // OBS: Cada vértice aponta para o início da sua lista de arestas adjacentes
     struct Aresta *adjacentes; // Lista de arestas que saem deste vértice
+    struct Ancora ancora;
 
 };
 
@@ -70,6 +77,7 @@ struct Grafo{
     char *nome;
     int qtdVertices, qtdArestas, qtdSubgrafos, limiteVertices;
     bool direcionado;
+    SmuTreap arvore;
     struct Vertice **vertices; // Lista dos seus vértices.
     TabelaGenerica subgrafos; // Tabela de espalhamento com os subgrafos do grafo.
     TabelaGenerica idVertices; // Tabela de espalhamento com os ids dos vértices do grafo associados aos seus nomes.
@@ -81,6 +89,7 @@ typedef struct Vertice Vertice;
 typedef struct Aresta Aresta;
 typedef struct Grafo Grafo;
 typedef struct Subgrafo Subgrafo;
+typedef struct Ancora Ancora;
 
 ////////////////////////////////////////////////////////////////////////////////////////
 
@@ -143,6 +152,8 @@ Graph createGraph(int nVert, bool directed, char *nome){
     novoGrafo->qtdArestas = 0;
     novoGrafo->qtdSubgrafos = 0;
 
+    novoGrafo->arvore = newSmuTreap(1, 1.2, 0.1, 10000);
+
     // Retorna o grafo novo.
     return novoGrafo;
 
@@ -169,6 +180,19 @@ int getTotalNodes(Graph g){
 
     // Retorna a quantidade de vértices do grafo. 
     return grafo->qtdVertices;
+
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+
+void calcularBoundigBoxVertice(Info i, double *x, double *y, double *w, double *h){
+
+    Vertice *vertice = (Vertice*)i;
+
+    *x = vertice->ancora.x;
+    *y = vertice->ancora.y;
+    *w = 0;
+    *h = 0;
 
 }
 
@@ -210,19 +234,26 @@ Node addNode(Graph g, char *nome, Info info){
     }
 
     strcpy(novoVertice->nome, nome);
-    novoVertice->id = grafo->qtdVertices;
+    int id = grafo->qtdVertices;
     novoVertice->dados = info;
     novoVertice->adjacentes = NULL; // isso mesmo?
+
+    Ancora *coordenadas = (Ancora*)info;
+
+    novoVertice->ancora.x = coordenadas->x;
+    novoVertice->ancora.y = coordenadas->y;
+
+    insertSmuT(grafo->arvore, novoVertice->ancora.x, novoVertice->ancora.y, novoVertice, 0, &calcularBoundigBoxVertice);
 
     // O demais campos do grafo são preenchidos.
     grafo->vertices[grafo->qtdVertices] = novoVertice;
     grafo->qtdVertices++;
 
     // Insere o id do vértice na tabela de espalhamento do grafo.
-    inserirElementoTabela(grafo->idVertices, nome, (DadoGenerico)(long)novoVertice->id);
+    inserirElementoTabela(grafo->idVertices, nome, (DadoGenerico)(intptr_t)id);
 
     // Retorna o id do vértice novo.
-    return novoVertice->id;
+    return id;
 
 }
 
@@ -232,17 +263,19 @@ Node getNode(Graph g, char *nome){
 
     // Acesso para os campos da struct Grafo. 
     Grafo *grafo = (Grafo*)g;
-    
+
+    nome[strcspn(nome, "\r\n")] = '\0';
+
     // A função chamada retorna o id do vértice por meio de seu nome.
     DadoGenerico busca = buscarElementoTabela(grafo->idVertices, nome);
 
     // Verificação para saber se o vértice foi ou não encontrado na tabela, ou seja, no gráfico. 
     if(busca == NULL){
-        printf("Aviso: O vertice nao foi encontrado no grafo!\n");
+        //printf("Aviso: O vertice nao foi encontrado no grafo! %s\n", nome);
         return -1;
     }
 
-    Node id = (Node)(long)busca;
+    Node id = (Node)(intptr_t)busca;
 
     // Retorna o id desse vértice.
     return id;
@@ -264,7 +297,7 @@ Info getNodeInfo(Graph g, Node node){
         return grafo->vertices[node]->dados;
     }
 
-    printf("Aviso: A informacao do vertice do grafo nao foi encontrada!\n");
+    //printf("Aviso: A informacao do vertice do grafo nao foi encontrada!\n");
 
     return NULL;
 
@@ -440,7 +473,7 @@ Node getFromNode(Graph g, Edge e){
 
         while(auxiliar != NULL){
             if(auxiliar == e){
-                return grafo->vertices[i]->id;
+                return i;
             }
             auxiliar = auxiliar->proxima;
         }
@@ -820,6 +853,8 @@ void killDG(Graph g){
     desalocarTabela(grafo->idVertices);
     desalocarTabela(grafo->subgrafos);
 
+    killSmuTreap(grafo->arvore);
+
     /* Por fim, desaloca o grafo ao todo. */
     free(grafo);
 
@@ -939,7 +974,7 @@ static void preencherArestasSubgrafos(Graph g, char *nomeSubgrafo, Node vetor[],
     Aresta *auxiliar;
 
     for(i = 0; i < grafo->qtdVertices; i++){
-            if(estaNoVetorIds(grafo->vertices[i]->id, vetor, nVert) == true){
+            if(estaNoVetorIds(i, vetor, nVert)){
                 auxiliar = grafo->vertices[i]->adjacentes;
                 while(auxiliar != NULL){
                     for(j = 0; j < nVert; j++){
@@ -1154,7 +1189,7 @@ void getAllEdgesSDG(Graph g, char *nomeSubgrafo, Lista lstEdges) {
     Subgrafo *subgrafo = buscarElementoTabela(grafo->subgrafos, nomeSubgrafo);
     if (!subgrafo || subgrafo->qtdVertices <= 0 || !subgrafo->arestas) return;
 
-    for (int i = 0; i < subgrafo->qtdVertices; i++) {
+    for (int i = 0; i < subgrafo->qtdArestas; i++) {
         if (subgrafo->arestas[i]) {
             inserirInicioLista(lstEdges, subgrafo->arestas[i]);
         }
@@ -1167,7 +1202,6 @@ void getAllEdgesSDG(Graph g, char *nomeSubgrafo, Lista lstEdges) {
 Graph produceGraph(Graph g, char *nomeSubgrafo){
 
     Grafo *grafo = (Grafo*)g;
-
     Subgrafo *subgrafo = buscarElementoTabela(grafo->subgrafos, nomeSubgrafo);
 
     if(subgrafo == NULL){
@@ -1175,49 +1209,29 @@ Graph produceGraph(Graph g, char *nomeSubgrafo){
         return NULL;
     }
 
-    Grafo *novoGrafo = (Grafo*)malloc(sizeof(Grafo));
+    Graph novo = createGraph(subgrafo->qtdVertices, grafo->direcionado, nomeSubgrafo);
 
-    if(novoGrafo == NULL){
-        printf("Erro: Falha na alocacao de memoria para a criacao do grafo a partir do subgrafo!\n");
-        return NULL;
+    for(int i = 0; i < subgrafo->qtdVertices; i++){
+        Vertice *v = subgrafo->vertices[i];
+        addNode(novo, v->nome, v->dados);
     }
 
-    novoGrafo->direcionado = grafo->direcionado;
-    novoGrafo->limiteVertices = grafo->limiteVertices;
+    for(int i = 0; i < subgrafo->qtdArestas; i++){
+        Aresta *a = subgrafo->arestas[i];
+        Node from = getFromNode(g, a);
+        Node to = getToNode(g, a);
 
-    novoGrafo->nome = (char*)malloc(strlen(nomeSubgrafo) + 1);
+        char *nomeFrom = getNodeName(g, from);
+        char *nomeTo = getNodeName(g, to);
 
-    if(novoGrafo->nome == NULL){
-        printf("Erro: Falha na alocacao de memoria para o nome do grafo a partir do subgrafo!\n");
-        free(novoGrafo);
-        return NULL;
+        Node newFrom = getNode(novo, nomeFrom);
+        Node newTo = getNode(novo, nomeTo);
+
+        addEdge(novo, newFrom, newTo, a->dados);
     }
 
-    novoGrafo->vertices = (Vertice**)calloc(subgrafo->qtdVertices, sizeof(Vertice*));
+    return novo;
 
-    if(novoGrafo->vertices == NULL){
-        printf("Erro: Falha na alocacao de memoria para a lista de vertices do grafo a partir do subgrafo!\n");
-        free(novoGrafo->nome);
-        free(novoGrafo);
-        return NULL;
-    }
-
-    int i;
-
-    for(i = 0; i < subgrafo->qtdVertices; i++){
-        Vertice *novoVertice = subgrafo->vertices[i];
-        addNode(novoGrafo, novoVertice->nome, novoVertice->dados);
-    }
-
-    for(i = 0; i < subgrafo->qtdArestas; i++){
-        // arrumar aqui depois
-    }
-
-    novoGrafo->qtdSubgrafos = 0;
-    novoGrafo->subgrafos = criarTabela(211);
-
-    return novoGrafo;
-    
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////
@@ -1242,24 +1256,22 @@ void desativarAresta(Graph g, Edge e){
 
 ////////////////////////////////////////////////////////////////////////////////////////
 
-Node includeNodeSDG(Graph g, char *nomeSubgrafo, Node node){
+bool isArestaAtiva(Graph g, Edge e){
+
+    Aresta *aresta = (Aresta*)e;
+
+    if(aresta->ativa == true){
+        return true;
+    }
+
+    return false;
+    
+}
+
+SmuTreap getArvoreGrafo(Graph g){
 
     Grafo *grafo = (Grafo*)g;
 
-    Subgrafo *subgrafo = buscarElementoTabela(grafo->subgrafos, nomeSubgrafo);
-
-    if(subgrafo == NULL){
-        printf("Aviso: O subgrafo nao foi encontrado no grafo!\n");
-        return -1;
-    }
-
-    Vertice *vertice = buscarEstruturaVertice(g, node);
-
-    subgrafo->vertices[subgrafo->qtdVertices] = vertice;
-    subgrafo->qtdVertices++;
-
-    return vertice->id;
+    return grafo->arvore;
 
 }
-
-////////////////////////////////////////////////////////////////////////////////////////

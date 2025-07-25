@@ -15,16 +15,16 @@
 
 ////////////////////////////////////////////////////////////////////////////////////////
 
-struct DadosVertice{
+struct Vertice{
 
-    char *id;
     double x, y;
+    char id[32];
 
 };
 
-struct DadosAresta{
+struct Aresta{
 
-    char *ldir, *lesq, *nome;
+    char ldir[30], lesq[30], nome[30];
     double cmp, vm;
 
 };
@@ -34,81 +34,38 @@ struct Posicao{
     double x, y;
 };
 
-typedef struct DadosVertice DadosVertice;
-typedef struct DadosAresta DadosAresta;
+typedef struct Vertice Vertice;
+typedef struct Aresta Aresta;
 typedef struct Posicao Posicao;
 
-////////////////////////////////////////////////////////////////////////////////////////
-
-/* O arquivo .geo é o que "vai daeixar a casa arrumadda", e contém os seguintes comandos:
- * q cep x y w h = Insere uma quadra (retângulo e cep);
- * cq sw cfill cstrk = Cores do preenchimento, da borda das quadras, espessura da borda. */
-
-static TabelaGenerica processarGeo(char *caminhoGeo, FILE *arquivoSvg){
-
-    FILE *arquivoGeo = fopen(caminhoGeo, "r");
-
-    if(arquivoGeo == NULL){
-        printf("Erro: Nao foi possivel abrir o arquivo .geo: %s!\n", caminhoGeo);
-        return NULL;
-    }
-
-    double x, y, w, h;
-    char cep[32], corb[32], corp[32], expb[32], linha[512];
-    TabelaGenerica tabela = criarTabela(10000);
-
-    while(fgets(linha, sizeof(linha), arquivoGeo)){
-        if(linha[0] == '#' || linha[0] == '\n'){
-            continue;
-        }
-       
-        if(strncmp(linha, "cq", 2) == 0){
-
-            sscanf(linha, "cq %s %s %s", corp, corb, expb);
-
-        }else if(strncmp(linha, "q", 1) == 0){
-
-            if(sscanf(linha, "q %s %lf %lf %lf %lf", cep, &x, &y, &w, &h) == 5){
-
-                FormaGeometricaGenerica retangulo = formularRetangulo(cep, x, y, w, h, corp, corb, expb);
-
-                if(retangulo != NULL){
-
-                    inserirElementoTabela(tabela, cep, retangulo);
-                    tagRetangulo(arquivoSvg, retangulo);
-                    fprintf(arquivoSvg, "<text x='%.2lf' y='%.2lf' font-size='14' fill='black' font-weight='bold' "
-                    "text-anchor='start' dominant-baseline='hanging'>%s</text>\n", x + 2, y + 2, cep);
-
-                }else{
-                    printf("Erro: inha malformada ignorada: %s", linha);
-                }
-
-            }else{
-                printf("Erro: Linha de texto invalida: %s\n", linha);
-            }
-        }
-    }
-
-    fclose(arquivoGeo);
-
-    return tabela;
-
-}
-
-////////////////////////////////////////////////////////////////////////////////////////
+// Funções auxiliares //////////////////////////////////////////////////////////////////////////////////////
 
 void calcularBoundingBoxVertice(Info i, double *x, double *y, double *w, double *h){
 
-    DadosVertice *dadosVertice = (DadosVertice*)i;
+    Vertice *vertice = (Vertice*)i;
 
-    *x = dadosVertice->x;
-    *y = dadosVertice->y;
+    *x = vertice->x;
+    *y = vertice->y;
     *w = 0.0;
     *h = 0.0;
 
 }
 
-// Função auxiliar.
+
+static double calcularDistancia(Graph g, Node a, Node b){
+
+    Vertice *v1 = (Vertice *)getNodeInfo(g, a);
+    Vertice *v2 = (Vertice *)getNodeInfo(g, b);
+
+    if (!v1 || !v2) return 1e9; // distância absurda se info faltar
+
+    double dx = v1->x - v2->x;
+    double dy = v1->y - v2->y;
+    return sqrt(dx * dx + dy * dy);
+    
+}
+
+
 static char *duplicarString(char *string){
 
     // Aloca a cópia da string
@@ -128,134 +85,159 @@ static char *duplicarString(char *string){
 
 }
 
-////////////////////////////////////////////////////////////////////////////////////////
 
-/* A entrada de dados será feita arquivo-texto (arquivo.via) com a descrição do sistema viário da cidade. 
- * O sistema viário da cidade é representado por um grafo direcionado. O Mapa Viário é um grafo direcionado:
- * os vértices representam os extremos de um segmento de rua e os arcos representam um segmento de rua e indicam 
- * o sentido do tráfego*/
+static bool relaxarAresta(Graph g, Node atual, Node vizinho, Edge e, TabelaGenerica custo, TabelaGenerica pai, FilaPrioridadeGenerica fila, Node destino) {
 
-static Graph processarVia(char *caminhoVia, FILE *arquivoSvg, SmuTreap *saidaArvore){
+    if (!isArestaAtiva(g, e)) return false;
 
-    FILE *arquivoVia = fopen(caminhoVia, "r");
+    char *idAtual = getNodeName(g, atual);
+    char *idVizinho = getNodeName(g, vizinho);
 
-    if(arquivoVia == NULL){
-        printf("Erro: Nao foi possivel abrir o arquivo .via: %s!\n", caminhoVia);
+    double *custoAtualPtr = buscarElementoTabela(custo, idAtual);
+    if (!custoAtualPtr) return false;
+
+    double custoAtual = *custoAtualPtr;
+
+    Aresta *info = (Aresta *)getEdgeInfo(g, e);
+    double novoCusto = custoAtual + info->cmp;
+
+    double *custoVizinhoPtr = buscarElementoTabela(custo, idVizinho);
+    if (!custoVizinhoPtr || novoCusto < *custoVizinhoPtr) {
+        double heuristica = calcularDistancia(g, vizinho, destino);
+        double prioridade = novoCusto + heuristica;
+
+        inserirFilaPrioridade(fila, (void *)(intptr_t)vizinho, prioridade);
+
+        double *novoPtr = malloc(sizeof(double));
+        *novoPtr = novoCusto;
+        inserirElementoTabela(custo, idVizinho, novoPtr);
+
+        inserirElementoTabela(pai, idVizinho, duplicarString(idAtual));
+        return true;
+    }
+
+    return false;
+}
+
+static Lista aEstrela(Graph g, char *idOrigem, char *idDestino, char *nomeSubgrafo) {
+    Node origem = getNode(g, idOrigem);
+    Node destino = getNode(g, idDestino);
+
+    if (origem < 0 || destino < 0) {
+        printf("[DEBUG] Origem ou destino inválido(s): origem=%d, destino=%d\n", origem, destino);
         return NULL;
     }
 
-    char linha[1024], lesq[50], ldir[50], nome[50], id[50], nomeOrigem[30], nomeDestino[30];
-    DadosVertice dadosVertice;
-    DadosAresta dadosAresta;
-    int limiteVertices;
-    Node origem, destino;
-    Graph grafo = NULL;
-    SmuTreap arvore = newSmuTreap(5, 1.1, 0.001, 10000);
-    *saidaArvore = arvore;
+    FilaPrioridadeGenerica fila = criarFilaPrioridade();
+    TabelaGenerica custo = criarTabela(500);
+    TabelaGenerica pai = criarTabela(500);
+    TabelaGenerica visitado = criarTabela(500);
 
-    double mx, my;
+    // custo inicial = 0
+    double* custoInicial = malloc(sizeof(double));
+    *custoInicial = 0.0;
+    inserirElementoTabela(custo, idOrigem, custoInicial);
 
-    while(fgets(linha, sizeof(linha), arquivoVia)){
-        if(linha[0] == '#' || linha[0] == '\n'){
-            continue;
+    double heuristica = calcularDistancia(g, origem, destino);
+    inserirFilaPrioridade(fila, (void*)(intptr_t)origem, heuristica);
+
+    while (!filaPrioridadeVazia(fila)) {
+        Node atual = (Node)(intptr_t)removerFilaPrioridade(fila);
+        char *idAtual = getNodeName(g, atual);
+
+        if (buscarElementoTabela(visitado, idAtual)) continue;
+        inserirElementoTabela(visitado, idAtual, (void*)1);
+
+        if (atual == destino) break;
+
+        Lista adjacentes = inicializarLista();
+        if (nomeSubgrafo == NULL)
+            adjacentEdges(g, atual, adjacentes);
+        else
+            adjacentEdgesSDG(g, nomeSubgrafo, atual, adjacentes);
+
+        for (int i = 0; i < buscarTamanhoLista(adjacentes); i++) {
+            Edge aresta = buscarElementoLista(adjacentes, i);
+            if (!aresta || !isArestaAtiva(g, aresta)) continue;  // <<< ESSA LINHA É A CORREÇÃO >>>
+
+            Node vizinho = getToNode(g, aresta);
+            char *idVizinho = getNodeName(g, vizinho);
+
+            if (!buscarElementoTabela(visitado, idVizinho)) {
+                double* custoAtualPtr = buscarElementoTabela(custo, idAtual);
+                double custoAtual = custoAtualPtr ? *custoAtualPtr : INFINITY;
+
+                Aresta* dados = getEdgeInfo(g, aresta);
+                double novoCusto = custoAtual + dados->cmp;
+
+                double* custoExistente = buscarElementoTabela(custo, idVizinho);
+                if (!custoExistente || novoCusto < *custoExistente) {
+                    double* novoCustoPtr = malloc(sizeof(double));
+                    *novoCustoPtr = novoCusto;
+                    inserirElementoTabela(custo, idVizinho, novoCustoPtr);
+                    inserirElementoTabela(pai, idVizinho, idAtual);
+
+                    double heuristica = calcularDistancia(g, vizinho, destino);
+                    inserirFilaPrioridade(fila, (void*)(intptr_t)vizinho, novoCusto + heuristica);
+                }
+            }
         }
 
-        if(grafo == NULL){
-            if(sscanf(linha, "nv %d", &limiteVertices) == 1 || sscanf(linha, "%d", &limiteVertices) == 1){
-                grafo = createGraph(limiteVertices, true, "g");
-            }else{
-                printf("Erro: Linha de texto invalida: %s\n", linha);
-            }
-        }else if(strncmp(linha, "v", 1) == 0){
+        desalocarLista(adjacentes);
+    }
 
-            if(grafo == NULL){
-                printf("Erro: Grafo ainda nao criado antes de adicionar vertices!\n");
-                return NULL;
-            }
+    if (!buscarElementoTabela(pai, idDestino)) {
+        desalocarFilaPrioridade(fila);
+        desalocarTabela(custo);
+        desalocarTabela(pai);
+        desalocarTabela(visitado);
+        return NULL;
+    }
 
-            if(sscanf(linha, "v %s %lf %lf", id, &dadosVertice.x, &dadosVertice.y) == 3){
-                
-                DadosVertice *copiaDadosVertice = (DadosVertice*)malloc(sizeof(DadosVertice));
+    Lista caminho = inicializarLista();
+    char *atual = getNodeName(g, destino);
 
-                if(copiaDadosVertice == NULL){
-                    printf("Errinho!\n");
-                    return NULL;
-                }
+    while (atual != NULL) {
+        inserirInicioLista(caminho, atual);
+        atual = buscarElementoTabela(pai, atual);
+    }
 
-                copiaDadosVertice->id = duplicarString(id);
-                copiaDadosVertice->x = dadosVertice.x;
-                copiaDadosVertice->y = dadosVertice.y;
+    desalocarFilaPrioridade(fila);
+    desalocarTabela(custo);
+    desalocarTabela(pai);
+    desalocarTabela(visitado);
 
-                Node vertice = addNode(grafo, copiaDadosVertice->id, copiaDadosVertice);
+    return caminho;
+}
 
-                fprintf(arquivoSvg, "<circle cx='%.2lf' cy='%.2lf' r='8' fill='blue' stroke='black' stroke-width='0.5' />\n", dadosVertice.x, dadosVertice.y);
 
-                fprintf(arquivoSvg, "<text x='%.2lf' y='%.2lf' font-size='7' fill='blue' text-anchor='middle' dominant-baseline='middle'>(%s)</text>\n", copiaDadosVertice->x, copiaDadosVertice->y - 6, copiaDadosVertice->id);
+char* acharVerticeMaisProximo(Graph g, double x, double y) {
+    Lista nomes = inicializarLista();
+    getNodeNames(g, nomes);
 
-                insertSmuT(arvore, copiaDadosVertice->x, copiaDadosVertice->y, copiaDadosVertice, 1, calcularBoundingBoxVertice);
+    double menorDist = __DBL_MAX__;
+    char* maisProximo = NULL;
 
-            }else{
-                printf("Erro: Linha de texto invalida: %s\n", linha);
-            }
-        }else if(strncmp(linha, "e", 1) == 0){
+    for (int i = 0; i < buscarTamanhoLista(nomes); i++) {
+        char* nome = buscarElementoLista(nomes, i);
+        Node n = getNode(g, nome);
+        Vertice* v = (Vertice*)getNodeInfo(g, n);
 
-            if(grafo == NULL){
-                printf("Erro: Grafo ainda nao criado antes de adicionar vertices!\n");
-                return NULL;
-            }
-
-            if(sscanf(linha, "e %s %s %s %s %lf %lf %s", nomeOrigem, nomeDestino, ldir, lesq, &dadosAresta.cmp, &dadosAresta.vm, nome) == 7){
-
-                origem = getNode(grafo, nomeOrigem);
-                destino = getNode(grafo, nomeDestino);
-
-                if (!origem || !destino) {
-                    printf("Aviso: O vertice '%s' ou '%s' nao foi encontrado no grafo!\n", nomeOrigem, nomeDestino);
-                    continue;  // Nada foi alocado ainda, só ignora a linha
-                }   
-
-                dadosAresta.ldir = (char*)malloc(strlen(ldir) + 1);
-                dadosAresta.lesq = (char*)malloc(strlen(lesq) + 1);
-                dadosAresta.nome = (char*)malloc(strlen(nome) + 1);
-
-                if(dadosAresta.ldir == NULL || dadosAresta.lesq == NULL || dadosAresta.nome == NULL){
-                    printf("Erro: Falha nas alocoes de memoria na leitura dos dados da aresta do grafo do arquivo .via!\n");
-                    return NULL;
-                }
-
-                strcpy(dadosAresta.ldir, ldir);
-                strcpy(dadosAresta.lesq, lesq);
-                strcpy(dadosAresta.nome, nome);
-
-                DadosAresta *copiaDadosAresta = (DadosAresta*)malloc(sizeof(DadosAresta));
-
-                copiaDadosAresta->ldir = duplicarString(ldir);
-                copiaDadosAresta->lesq = duplicarString(lesq);
-                copiaDadosAresta->nome = duplicarString(nome);
-                copiaDadosAresta->cmp = dadosAresta.cmp;
-                copiaDadosAresta->vm = dadosAresta.vm;
-
-                addEdge(grafo, origem, destino, copiaDadosAresta);
-
-                DadosVertice *dadosOrigem = getNodeInfo(grafo, origem);
-
-                DadosVertice *dadosDestino = getNodeInfo(grafo, destino);
-
-                fprintf(arquivoSvg, "<line x1='%.2lf' y1='%.2lf' x2='%.2lf' y2='%.2lf' stroke='black' stroke-width='3'/>\n", dadosOrigem->x, dadosOrigem->y, dadosDestino->x, dadosDestino->y);
-
-            }else{
-                printf("Erro: Linha de texto invalida: %s\n", linha);
+        if (v) {
+            double dx = v->x - x;
+            double dy = v->y - y;
+            double dist = dx * dx + dy * dy;
+            if (dist < menorDist) {
+                menorDist = dist;
+                maisProximo = nome;
             }
         }
     }
-    
-    fclose(arquivoVia);
 
-    return grafo;
-
+    desalocarLista(nomes);
+    return maisProximo;
 }
 
-////////////////////////////////////////////////////////////////////////////////////////
 
 static Posicao encontrarPosicao(TabelaGenerica t, char *cep, char *face, double numero){
 
@@ -290,7 +272,110 @@ static Posicao encontrarPosicao(TabelaGenerica t, char *cep, char *face, double 
 
 }
 
-////////////////////////////////////////////////////////////////////////////////////////
+// Funções de armazenamento //////////////////////////////////////////////////////////////////////////////////////
+
+static void processarGeo(TabelaGenerica t, Lista l, FILE *arquivoGeo, FILE *arquivoSvg){
+
+    char linha[512], corb[32] = "yellow", corp[32] = "blue", expb[32] = "solid", cep[32];
+    double x, y, w, h;
+
+    while(fgets(linha, sizeof(linha), arquivoGeo)){
+        if(linha[0] == '#' || linha[0] == '\n'){
+            continue;
+        }
+
+        if(strncmp(linha, "cq", 2) == 0){
+            if(sscanf(linha, "cq %s %s %s", corp, corb, expb) == 3){
+                
+            }
+        }else if(linha[0] == 'q'){
+            if(sscanf(linha, "q %s %lf %lf %lf %lf", cep, &x, &y, &w, &h) == 5){
+                FormaGeometricaGenerica retangulo = formularRetangulo(cep, x, y, w, h, corp, corb, expb);
+
+                tagRetangulo(arquivoSvg, retangulo);
+
+                fprintf(arquivoSvg, "<text x='%.2lf' y='%.2lf' font-size='14' fill='black' font-weight='bold' "
+                    "text-anchor='start' dominant-baseline='hanging'>%s</text>\n", x + 2, y + 2, cep);
+
+                inserirElementoTabela(t, cep, retangulo);
+                inserirInicioLista(l, retangulo);
+
+            }
+        }
+
+    }
+
+    fclose(arquivoGeo);
+
+}
+
+
+static void processarVia(GrafoGenerico g, FILE *arquivoVia, FILE *arquivoSvg, SmuTreap arvore){
+
+    char linha[1024], ldir[30], lesq[30], nome[30], id[150], origem[20], destino[20];
+    double cmp, vm, x, y;
+
+    while(fgets(linha, sizeof(linha), arquivoVia)){
+        if(linha[0] == '#' || linha[0] == '\n'){
+            continue;
+        }
+
+        if(linha[0] == 'v'){
+            if(sscanf(linha, "v %s %lf %lf", id, &x, &y) == 3){
+                Vertice *vertice = malloc(sizeof(Vertice));
+
+                strcpy(vertice->id, id);
+                vertice->x = x;
+                vertice->y = y;
+
+                addNode(g, id, vertice);
+
+                insertSmuT(arvore, x, y, vertice, 1, calcularBoundingBoxVertice);
+
+                fprintf(arquivoSvg, "<circle cx='%.2lf' cy='%.2lf' r='3' fill='blue' stroke='black' stroke-width='0.5' />\n", x, y);
+
+                fprintf(arquivoSvg, "<text x='%.2lf' y='%.2lf' font-size='7' fill='blue' text-anchor='middle' dominant-baseline='middle'>(%s)</text>\n", x, y - 6, id);
+                
+            }
+
+        }else if(linha[0] == 'e'){
+            if(sscanf(linha, "e %s %s %s %s %lf %lf  %[^\n]", origem, destino, ldir, lesq, &cmp, &vm, nome) == 7 || sscanf(linha, "e %s %s %s %s %lf %lf %[^\n]", origem, destino, ldir, lesq, &cmp, &vm, nome) == 6){
+                Aresta *aresta = malloc(sizeof(Aresta));
+
+                strcpy(aresta->ldir, ldir);
+                strcpy(aresta->lesq, lesq);
+                strcpy(aresta->nome, nome);
+                
+                aresta->cmp = cmp;
+                aresta->vm = vm;
+
+                Node from = getNode(g, origem);
+                Node to = getNode(g, destino);
+
+                if(from != -1 && to != -1){
+                    addEdge(g, from, to, aresta);
+
+                    Vertice *vOrigem = (Vertice *)getNodeInfo(g, from);
+                    Vertice *vDestino = (Vertice *)getNodeInfo(g, to);
+
+                    fprintf(arquivoSvg,
+                            "<line x1='%.2lf' y1='%.2lf' x2='%.2lf' y2='%.2lf' stroke='gray' stroke-width='1' marker-end='url(#arrow)'/>\n",
+                            vOrigem->x, vOrigem->y, vDestino->x, vDestino->y);
+
+                }else{
+                    printf("Erro: vertice de origem ou destino nao encontrado (%s -> %s), aresta ignorada.\n", origem, destino);
+                    free(aresta); 
+                }
+            }
+        }
+
+    }
+
+    fclose(arquivoVia);
+
+}
+
+// Funções de manipulação //////////////////////////////////////////////////////////////////////////////////////
 
 static void processarArrobaOInterrogacao(TabelaGenerica t, char *linha, FILE *arquivoSvg, FILE *arquivoTxt, Posicao *registradores){
 
@@ -321,37 +406,27 @@ static void processarArrobaOInterrogacao(TabelaGenerica t, char *linha, FILE *ar
 
 ////////////////////////////////////////////////////////////////////////////////////////
 
-static void processarAlag(Graph g, SmuTreap t, char *linha, FILE *arquivoSvg, FILE *arquivoTxt){
-
+static void processarAlag(Graph g, SmuTreap t, char *linha, FILE *arquivoSvg, FILE *arquivoTxt) {
     int n;
     double x, y, w, h;
 
-    if(sscanf(linha, "alag %d %lf %lf %lf %lf", &n, &x, &y, &w, &h) != 5){
-        printf("Erro: Linha invalida no comando alag: %s\n", linha);
+    if (sscanf(linha, "alag %d %lf %lf %lf %lf", &n, &x, &y, &w, &h) != 5) {
+        fprintf(stderr, "[*] alag \n Comandos nao reconhecidos: %s\n", linha);
         return;
     }
 
-    fprintf(arquivoSvg, "<rect x='%.2lf' y='%.2lf' width='%.2lf' height='%.2lf' "
+    fprintf(arquivoSvg,
+        "<rect x='%.2lf' y='%.2lf' width='%.2lf' height='%.2lf' "
         "fill='#AB37C8' stroke='#AA0044' stroke-width='1' fill-opacity='0.5'/>\n",
         x, y, w, h);
 
+    // Busca os vértices dentro da região
     Lista verticesNaRegiao = inicializarLista();
     getNodisDentroRegiaoSmuT(t, x, y, x + w, y + h, verticesNaRegiao);
 
-    // Verificar se há pelo menos 1 vértice existente no grafo
-    int qtdVertices = buscarTamanhoLista(verticesNaRegiao);
-    int verticesValidos = 0;
-    for (int i = 0; i < qtdVertices; i++) {
-        Nodi no = (Nodi)buscarElementoLista(verticesNaRegiao, i);
-        DadosVertice *dados = getInfoSmuT(t, no);
-        if (dados && getNode(g, dados->id)) {
-            verticesValidos++;
-        }
-    }
-
-    if (verticesValidos == 0) {
-        fprintf(stderr, "[!] alag %d ignorado: nenhum vértice da região existe no grafo\n", n);
-        fprintf(arquivoTxt, "[!] alag %d — nenhum vértice da região (%.2lf,%.2lf,%.2lf,%.2lf) existe no grafo\n", n, x, y, w, h);
+    int qtd = buscarTamanhoLista(verticesNaRegiao);
+    if (qtd == 0) {
+        fprintf(arquivoTxt, "[*] alag %d \n Nenhum vértice encontrado na região (%.2lf,%.2lf,%.2lf,%.2lf)\n", n, x, y, w, h);
         desalocarLista(verticesNaRegiao);
         return;
     }
@@ -360,475 +435,376 @@ static void processarAlag(Graph g, SmuTreap t, char *linha, FILE *arquivoSvg, FI
     sprintf(nomeSubgrafo, "alag%d", n);
     createSubgraphDG(g, nomeSubgrafo, NULL, 0, false);
 
-    for (int i = 0; i < qtdVertices; i++) {
-        Nodi no = (Nodi)buscarElementoLista(verticesNaRegiao, i);
-        DadosVertice *dados = getInfoSmuT(t, no);
-        Node vertice = getNode(g, dados->id);
-        if (!vertice) continue;
+    for (int i = 0; i < qtd; i++) {
+        Nodi no = buscarElementoLista(verticesNaRegiao, i);
+        Vertice *v = (Vertice *)getInfoSmuT(t, no);
+        double vx = v->x;
+        double vy = v->y;
 
-        Lista arestas = inicializarLista();
-        adjacentEdges(g, vertice, arestas);
+        // Busca o vértice pelo grafo (você armazenou info == Vertice*, então compara pelas coordenadas)
+        Lista nomes = inicializarLista();
+        getNodeNames(g, nomes);
 
-        int qtdArestas = buscarTamanhoLista(arestas);
-        for (int j = 0; j < qtdArestas; j++) {
-            Edge aresta = (Edge)buscarElementoLista(arestas, j);
-            desativarAresta(g, aresta);
-            includeEdgeSDG(g, nomeSubgrafo, aresta);
+        for (int j = 0; j < buscarTamanhoLista(nomes); j++) {
+            char *nome = buscarElementoLista(nomes, j);
+            Node node = getNode(g, nome);
+            Vertice *info = (Vertice *)getNodeInfo(g, node);
+            if (info && info->x == vx && info->y == vy) {
+                Lista arestas = inicializarLista();
+                adjacentEdges(g, node, arestas);
+                for (int k = 0; k < buscarTamanhoLista(arestas); k++) {
+                    Edge e = buscarElementoLista(arestas, k);
+                    desativarAresta(g, e);
+                    includeEdgeSDG(g, nomeSubgrafo, e);
 
-            DadosAresta *info = (DadosAresta*)getEdgeInfo(g, aresta);
-            fprintf(arquivoTxt, "[*] alag %d %lf %lf %lf %lf\n", n, x, y, w, h);
-            fprintf(arquivoTxt, " Aresta desativada: %s -> %s\nRua: %s\nVm: %.2lf\nCmp: %.2lf\n",
-                getNodeName(g, getFromNode(g, aresta)),
-                getNodeName(g, getToNode(g, aresta)),
-                info->nome, info->vm, info->cmp);
+                    Aresta *dados = (Aresta *)getEdgeInfo(g, e);
+                    fprintf(arquivoTxt, "[*] alag %d (%.2lf, %.2lf, %.2lf, %.2lf)\n", n, x, y, w, h);
+                    fprintf(arquivoTxt, "Aresta desativada: %s -> %s\nRua: %s | Vm: %.2lf | Cmp: %.2lf\n",
+                            getNodeName(g, getFromNode(g, e)),
+                            getNodeName(g, getToNode(g, e)),
+                            dados->nome, dados->vm, dados->cmp);
+                }
+                desalocarLista(arestas);
+            }
         }
 
-        desalocarLista(arestas);
+        desalocarLista(nomes);
     }
 
     desalocarLista(verticesNaRegiao);
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////////////
 
-static void processarDren(Graph g, char *linha, FILE *arquivoTxt){
-
+static void processarDren(Graph g, char *linha, FILE *arquivoTxt) {
     int n;
-
-    if(sscanf(linha, "dren %d", &n) != 1){
-        printf("Erro: Linha invalida no comando dren: %s\n", linha);
+    if (sscanf(linha, "dren %d", &n) != 1) {
+        fprintf(stderr, "[erro] Comando dren mal formatado: %s\n", linha);
         return;
     }
 
     char nomeSubgrafo[32];
     sprintf(nomeSubgrafo, "alag%d", n);
-    /*
-    if (!subgraphExisteEValido(g, nomeSubgrafo)) {
-        fprintf(stderr, "[!] dren %d ignorado: subgrafo '%s' inexistente ou vazio.\n", n, nomeSubgrafo);
-        fprintf(arquivoTxt, "[!] dren %d — subgrafo inexistente ou vazio.\n", n);
-        return;
-    }*/
 
     Lista arestasSubgrafo = inicializarLista();
     getAllEdgesSDG(g, nomeSubgrafo, arestasSubgrafo);
 
-    int qtdArestasGrafo = buscarTamanhoLista(arestasSubgrafo), i;
+    int qtd = buscarTamanhoLista(arestasSubgrafo);
+    if (qtd == 0) {
+        fprintf(arquivoTxt, "[!] dren %d — nenhuma aresta encontrada no subgrafo %s\n", n, nomeSubgrafo);
+        desalocarLista(arestasSubgrafo);
+        return;
+    }
 
-    for(i = 0; i < qtdArestasGrafo; i++){
-        Edge aresta = (Edge)buscarElementoLista(arestasSubgrafo, i);
-        ativarAresta(g, aresta);
+    for (int i = 0; i < qtd; i++) {
+        Edge e = buscarElementoLista(arestasSubgrafo, i);
+        ativarAresta(g, e);
 
-        fprintf(arquivoTxt, "[*] dren %d\n", n);
-        fprintf(arquivoTxt, " Aresta ativada: %s -> %s\n", getNodeName(g, getFromNode(g, aresta)), getNodeName(g, getToNode(g, aresta)));
+        Aresta *dados = (Aresta *)getEdgeInfo(g, e);
+        fprintf(arquivoTxt,
+            "[*] dren %d — aresta reativada: %s -> %s\nRua: %s | Vm: %.2lf | Cmp: %.2lf\n",
+            n,
+            getNodeName(g, getFromNode(g, e)),
+            getNodeName(g, getToNode(g, e)),
+            dados->nome, dados->vm, dados->cmp);
     }
 
     desalocarLista(arestasSubgrafo);
-
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////
 
-static void processarSg(Graph g, SmuTreap t, char *linha, FILE *arquivoSvg){
-
+static void processarSg(Graph g, SmuTreap t, char *linha, FILE *arquivoSvg) {
     char nomeSubgrafo[32];
     double x, y, w, h;
 
-    if(sscanf(linha, "sg %s %lf %lf %lf %lf", nomeSubgrafo, &x, &y, &w, &h) != 5){
-        printf("Erro: Linha invalida no comando sg: %s", linha);
+    if (sscanf(linha, "sg %s %lf %lf %lf %lf", nomeSubgrafo, &x, &y, &w, &h) != 5) {
+        fprintf(stderr, "[erro] Linha inválida no comando sg: %s\n", linha);
         return;
     }
 
-    fprintf(arquivoSvg, "<rect x='%.2lf' y='%.2lf' width='%.2lf' height='%.2lf' "
-        "fill='none' stroke='red' stroke-width='2' stroke-dasharray='5,5'/>\n",
-        x, y, w, h);
+    // Desenha o retângulo da região no SVG
+    fprintf(arquivoSvg,
+            "<rect x='%.2lf' y='%.2lf' width='%.2lf' height='%.2lf' "
+            "fill='none' stroke='red' stroke-width='2' stroke-dasharray='5,5'/>\n",
+            x, y, w, h);
 
+    // Cria o subgrafo vazio (sem vértices nem arestas)
     createSubgraphDG(g, nomeSubgrafo, NULL, 0, false);
 
     Lista verticesNaRegiao = inicializarLista();
-
     getNodisDentroRegiaoSmuT(t, x, y, x + w, y + h, verticesNaRegiao);
 
-    int qtdVerticesGrafo = buscarTamanhoLista(verticesNaRegiao), i;
-    TabelaGenerica tabelaVertices = criarTabela(500);
-    Nodi no;
-    Node vertice, destino;
-    Edge aresta;
-    DadosVertice *dadosVertice;
-    
+    TabelaGenerica verticesTabela = criarTabela(512);
 
-    for(i = 0; i < qtdVerticesGrafo; i++){
-        no = (Nodi)buscarElementoLista(verticesNaRegiao, i);
-        dadosVertice = (DadosVertice*)getInfoSmuT(t, no);
-        inserirElementoTabela(tabelaVertices, dadosVertice->id, NULL);
+    int qtd = buscarTamanhoLista(verticesNaRegiao);
+    for (int i = 0; i < qtd; i++) {
+        Nodi no = buscarElementoLista(verticesNaRegiao, i);
+        Vertice *info = (Vertice *)getInfoSmuT(t, no);
+        if (!info) continue;
 
-        vertice = getNode(g, dadosVertice->id);
-
-        includeNodeSDG(g, nomeSubgrafo, vertice);
+        inserirElementoTabela(verticesTabela, info->id, NULL);
     }
 
-    for(i = 0; i < qtdVerticesGrafo; i++){
-        no = buscarElementoLista(verticesNaRegiao, i);
-        dadosVertice = (DadosVertice*)getInfoSmuT(t, no);
-        vertice = getNode(g, dadosVertice->id);
+    // Agora percorremos os vértices e inserimos arestas válidas no subgrafo
+    for (int i = 0; i < qtd; i++) {
+        Nodi no = buscarElementoLista(verticesNaRegiao, i);
+        Vertice *info = (Vertice *)getInfoSmuT(t, no);
+        if (!info) continue;
+
+        Node origem = getNode(g, info->id);
+        if (origem == -1) continue;
 
         Lista arestas = inicializarLista();
-        adjacentEdges(g, vertice, arestas);
+        adjacentEdges(g, origem, arestas);
 
-        int qtdArestasGrafo = buscarTamanhoLista(arestas), j;
-
-        for(j = 0; j < qtdArestasGrafo; j++){
-            aresta = buscarElementoLista(arestas, j);
-            destino = getToNode(g, aresta);
+        int tamArestas = buscarTamanhoLista(arestas);
+        for (int j = 0; j < tamArestas; j++) {
+            Edge e = buscarElementoLista(arestas, j);
+            Node destino = getToNode(g, e);
             char *idDestino = getNodeName(g, destino);
 
-            if(verificarElementoLista(tabelaVertices, idDestino)){
-                includeEdgeSDG(g, nomeSubgrafo, aresta);
+            if (idDestino && buscarElementoTabela(verticesTabela, idDestino)) {
+                includeEdgeSDG(g, nomeSubgrafo, e);
             }
         }
 
         desalocarLista(arestas);
-
     }
 
     desalocarLista(verticesNaRegiao);
-    desalocarTabela(tabelaVertices);
-    
+    desalocarTabela(verticesTabela);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////
 
-static double calcularDistancia(Graph g, Node a, Node b){
+static void processarPInterrogacao(Graph g, char *linha, FILE *arquivoTxt, Posicao *registradores, TabelaGenerica caminhos) {
+    char nomePercurso[32], nomeSubgrafo[32], reg1[8], reg2[8];
 
-    DadosVertice *dadosVertice1 = (DadosVertice*)getNodeInfo(g, a);
-    DadosVertice *dadosVertice2 = (DadosVertice*)getNodeInfo(g, b);
-
-    double x = dadosVertice1->x - dadosVertice2->x;
-    double y = dadosVertice1->y- dadosVertice2->y;
-
-    return sqrt((x * x) + (y * y));
-
-}
-
-static bool relaxarAresta(Graph g, Node verticeAtual, Node verticeVizinho, Edge aresta, TabelaGenerica custo, TabelaGenerica pai, FilaPrioridadeGenerica fila, Node destino){
-
-    char *idAtual = getNodeName(g, verticeAtual);
-    char *idVizinho = getNodeName(g, verticeVizinho);
-
-    double custoAtual = (double)(intptr_t)buscarElementoTabela(custo, idAtual);
-    DadosAresta *dadosAresta = (DadosAresta*)getEdgeInfo(g, aresta);
-    double novoCusto = custoAtual + dadosAresta->cmp;
-
-    void *custoExistente = buscarElementoTabela(custo, idVizinho);
-    if(custoExistente == NULL || novoCusto < (double)(intptr_t)custoExistente){
-        double distancia = calcularDistancia(g, verticeVizinho, destino);
-        double f = novoCusto + distancia;
-
-        inserirFilaPrioridade(fila, (void*)(intptr_t)verticeVizinho, f);
-        inserirElementoTabela(custo, idVizinho, (void *)(intptr_t)novoCusto);
-        inserirElementoTabela(pai, idVizinho, idAtual);
-
-        return true;
-
-    }
-
-    return false;
-
-}
-
-static Lista dijkstraParaguaio(Graph g, char *idOrigem, char *idDestino, char *nomeSubgrafo){
-
-    Node origem = getNode(g, idOrigem);
-    Node destino = getNode(g, idDestino);
-
-    if (origem < 0 || destino < 0) {
-        printf("[DEBUG] Origem ou destino inválido(s): origem=%d, destino=%d\n", origem, destino);
-        return NULL;
-    }
-
-    FilaPrioridadeGenerica fila = criarFilaPrioridade();
-    TabelaGenerica custo = criarTabela(500), pai = criarTabela(500), visitado = criarTabela(500);
-
-    inserirFilaPrioridade(fila, (void*)(intptr_t)origem, calcularDistancia(g, origem, destino));
-    inserirElementoTabela(custo, idOrigem, (void*)(intptr_t)0);
-
-    while(!filaPrioridadeVazia(fila)){
-        Node atual = (Node)(intptr_t)removerFilaPrioridade(fila);
-
-        if (atual < 0 || atual >= getTotalNodes(g)) {
-            printf("[DEBUG] Valor de 'atual' fora dos limites: %d\n", atual);
-            continue; // ou return NULL;
-        }
-
-        char *idAtual = getNodeName(g, atual);
-
-        if(buscarElementoTabela(visitado, idAtual)) continue;
-
-        inserirElementoTabela(visitado, idAtual, (void *)1);
-
-        if(atual == destino) break;
-
-        Lista adjacentes = inicializarLista();
-
-        if(strcmp(nomeSubgrafo, "-") == 0){
-            adjacentEdges(g, atual, adjacentes);
-        }else{
-            adjacentEdgesSDG(g, nomeSubgrafo, atual, adjacentes);
-        }
-
-        int i;
-
-        for(i = 0; i < buscarTamanhoLista(adjacentes); i++){
-            Edge aresta = buscarElementoLista(adjacentes, i);
-
-            if (!aresta) {
-                printf("[DEBUG] Aresta nula na posição %d\n", i);
-                continue;
-            }
-
-            if ((intptr_t)aresta < 1000) {
-                printf("[DEBUG] Ponteiro de aresta suspeito: %p\n", aresta);
-            }
-
-            Node vizinho = getToNode(g, aresta);
-            char *idvizinho = getNodeName(g, vizinho);
-
-            if(!verificarElementoLista(visitado, idvizinho)){
-                relaxarAresta(g, atual, vizinho, aresta, custo, pai, fila, destino);
-            }
-        }
-
-        desalocarLista(adjacentes);
-    }
-
-    if(!buscarElementoTabela(pai, idDestino)){
-        desalocarFilaPrioridade(fila);
-        desalocarTabela(custo);
-        desalocarTabela(pai);
-        desalocarTabela(visitado);
-        return NULL;
-    }
-
-    Lista caminho = inicializarLista();
-
-    char *atual = getNodeName(g, destino);
-    while(atual != NULL){
-        inserirInicioLista(caminho, atual);
-        atual = buscarElementoTabela(pai, atual);
-    }
-    
-    desalocarFilaPrioridade(fila);
-    desalocarTabela(custo);
-    desalocarTabela(pai);
-    desalocarTabela(visitado);
-
-    return caminho;
-
-}
-
-static void processarPInterrogacao(Graph g, char *linha, FILE *arquivoTxt, FILE *arquivoSvg, TabelaGenerica tabelaCaminhos){
-
-    char nomePercurso[32], nomeSubgrafo[32], reg1[32], reg2[32];
-
-    if(sscanf(linha, "p? %s %s %s %s", nomePercurso, nomeSubgrafo, reg1, reg2) != 4){
-        printf("Erro: Falha no comando p?: %s\n", linha);
+    if (sscanf(linha, "p? %s %s %s %s", nomePercurso, nomeSubgrafo, reg1, reg2) != 4) {
+        fprintf(stderr, "[erro] Linha inválida no comando p?: %s\n", linha);
         return;
     }
 
-    Node origem = getNode(g, reg1);
-    Node destino = getNode(g, reg2);
+    int r1, r2;
+    if (sscanf(reg1, "R%d", &r1) != 1 || sscanf(reg2, "R%d", &r2) != 1) {
+        fprintf(stderr, "[erro] Registradores inválidos em p?: %s, %s\n", reg1, reg2);
+        return;
+    }
+
+    Posicao origem = registradores[r1];
+    Posicao destino = registradores[r2];
 
     fprintf(arquivoTxt, "[*] p? %s %s %s %s\n", nomePercurso, nomeSubgrafo, reg1, reg2);
 
-    Lista caminho = dijkstraParaguaio(g, reg1, reg2, nomeSubgrafo);
+    char* idOrigem = acharVerticeMaisProximo(g, origem.x, origem.y);
+    char* idDestino = acharVerticeMaisProximo(g, destino.x, destino.y);
 
-    if (caminho == NULL) {
-        fprintf(arquivoTxt, " Trajeto inacessivel a partir da origem!\n");
+    if (!idOrigem || !idDestino) {
+        fprintf(arquivoTxt, " Caminho inacessível (nenhum vértice próximo).\n");
         return;
     }
 
-    if (buscarTamanhoLista(caminho) == 0) {
-        fprintf(arquivoTxt, " Caminho retornado está vazio!\n");
-        desalocarLista(caminho);
+    char *subgrafo = strcmp(nomeSubgrafo, "-") == 0 ? NULL : nomeSubgrafo;
+    Lista caminho = aEstrela(g, idOrigem, idDestino, subgrafo);
+
+    if (!caminho || buscarTamanhoLista(caminho) == 0) {
+        fprintf(arquivoTxt, " Caminho inacessível.\n");
+        if (caminho) desalocarLista(caminho);
         return;
     }
 
     fprintf(arquivoTxt, " Caminho mais curto: ");
-    for(int i = 0; i < buscarTamanhoLista(caminho); i++){
-        fprintf(arquivoTxt, "%s", (char*)buscarElementoLista(caminho, i));
-        if(i < buscarTamanhoLista(caminho) - 1){
-            fprintf(arquivoTxt, "->");
-        }
+    for (int i = 0; i < buscarTamanhoLista(caminho); i++) {
+        char *id = (char *)buscarElementoLista(caminho, i);
+        fprintf(arquivoTxt, "%s", id);
+        if (i < buscarTamanhoLista(caminho) - 1)
+            fprintf(arquivoTxt, " -> ");
     }
     fprintf(arquivoTxt, "\n");
 
-    inserirElementoTabela(tabelaCaminhos, nomePercurso, caminho);
-
-    // Desenhar caminho no SVG com setas
-    for (int i = 0; i < buscarTamanhoLista(caminho) - 1; i++) {
-        char *idA = (char *)buscarElementoLista(caminho, i);
-        char *idB = (char *)buscarElementoLista(caminho, i + 1);
-
-        Node a = getNode(g, idA);
-        Node b = getNode(g, idB);
-
-        DadosVertice *da = (DadosVertice *)getNodeInfo(g, a);
-        DadosVertice *db = (DadosVertice *)getNodeInfo(g, b);
-
-        if (da && db) {
-            fprintf(arquivoSvg,
-                        "<defs>\n"
-                        "  <marker id='arrow' viewBox='0 0 10 10' refX='10' refY='5'\n"
-                        "          markerWidth='6' markerHeight='6' orient='auto-start-reverse'>\n"
-                        "    <path d='M 0 0 L 10 5 L 0 10 z' fill='red' />\n"
-                        "  </marker>\n"
-                        "</defs>\n"
-                    );
-        }
-    }
-
+    inserirElementoTabela(caminhos, nomePercurso, caminho);
 }
-
-
 
 ////////////////////////////////////////////////////////////////////////////////////////
 
-static void processarJoin(Graph g, char *linha, FILE *arquivoTxt, TabelaGenerica caminho){
-
+static void processarJoin(Graph g, char *linha, FILE *arquivoTxt, TabelaGenerica caminhos)
+{
     char nomeFinal[32], nome1[32], nome2[32];
-    if(sscanf(linha, "join %s %s %s", nomeFinal, nome1, nome2) != 3){
-        printf("Erro: Comando join invalido: %s\n", linha);
+    if (sscanf(linha, "join %s %s %s", nomeFinal, nome1, nome2) != 3) {
+        fprintf(stderr, "Erro: Comando join inválido: %s\n", linha);
         return;
     }
 
-    Lista caminho1 = buscarElementoTabela(caminho, nome1);
-    Lista caminho2 = buscarElementoTabela(caminho, nome2);
+    Lista caminho1 = buscarElementoTabela(caminhos, nome1);
+    Lista caminho2 = buscarElementoTabela(caminhos, nome2);
 
-    if(!caminho1 || !caminho2){
-        fprintf(arquivoTxt, "[*] join %s %s %s\n Caminhos %s ou %s inexistentes.\n", nomeFinal , nome1, nome2, nome1, nome2);
+    fprintf(arquivoTxt, "[*] join %s %s %s\n", nomeFinal, nome1, nome2);
+
+    if (!caminho1 || !caminho2) {
+        fprintf(arquivoTxt, " Caminhos %s ou %s inexistentes.\n", nome1, nome2);
         return;
     }
 
     char *destino = buscarElementoLista(caminho1, buscarTamanhoLista(caminho1) - 1);
-    char *origem = buscarElementoLista(caminho2, 0);
+    char *origem  = buscarElementoLista(caminho2, 0);
 
-    Lista intermediario = dijkstraParaguaio(g, destino, origem, "-");
+    Lista intermediario = aEstrela(g, destino, origem, NULL); // Grafo completo
 
-    fprintf(arquivoTxt, "[*] join %s %s %s\n", nomeFinal, nome1, nome2);
-
-    if(intermediario == NULL || buscarTamanhoLista(intermediario) == 0){
-        fprintf(arquivoTxt, " Caminho intermediario entre %s e %s nao encontrado!\n", destino, origem);
+    if (!intermediario || buscarTamanhoLista(intermediario) == 0) {
+        fprintf(arquivoTxt, " Caminho intermediário entre %s e %s não encontrado!\n", destino, origem);
+        if (intermediario) desalocarLista(intermediario);
         return;
     }
 
     Lista caminhoFinal = inicializarLista();
 
-    int i;
-
-    for(i = 0; i < buscarTamanhoLista(caminho1) - 1; i++){
+    // Copia caminho1 exceto o último vértice
+    for (int i = 0; i < buscarTamanhoLista(caminho1) - 1; i++)
         inserirFimLista(caminhoFinal, buscarElementoLista(caminho1, i));
-    }
 
-    for(i = 0; i < buscarTamanhoLista(intermediario) - 1; i++){
+    // Copia intermediário exceto o último vértice
+    for (int i = 0; i < buscarTamanhoLista(intermediario) - 1; i++)
         inserirFimLista(caminhoFinal, buscarElementoLista(intermediario, i));
-    }
 
-    for(i = 0; i < buscarTamanhoLista(caminho2); i++){
+    // Copia caminho2 completo
+    for (int i = 0; i < buscarTamanhoLista(caminho2); i++)
         inserirFimLista(caminhoFinal, buscarElementoLista(caminho2, i));
-    }
 
-    inserirElementoTabela(caminho, nomeFinal, caminhoFinal);
+    inserirElementoTabela(caminhos, nomeFinal, caminhoFinal);
 
     fprintf(arquivoTxt, " Caminho combinado com sucesso.\n");
 
+    desalocarLista(intermediario);
+
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////
 
-static void processarShw(Graph g, char *linha, FILE *arquivoSvg, TabelaGenerica caminho){
-
-    char nomePercurso[32], camCurto[16], camRapido[16];
-
-    if(sscanf(linha, "shw %s %s %s", nomePercurso, camCurto, camRapido) != 3){
-        printf("Erro: Linha invalida no comando shw: %s\n", linha);
-        return;
-    }
-
-    Lista listacaminho = buscarElementoTabela(caminho, nomePercurso);
-
-    if(!listacaminho || buscarTamanhoLista(listacaminho) < 2){
-        fprintf(arquivoSvg, "<!-- Caminho '%s' inacessível ou inválido -->\n", nomePercurso);
-
-        if(listacaminho && buscarTamanhoLista(listacaminho) == 1){
-            // Só tem origem, desenhar linha até destino inválido (repetido por segurança)
-            char *inicio = (char*)buscarElementoLista(listacaminho, 0);
-            DadosVertice *dadosInicio = (DadosVertice*)getNodeInfo(g, getNode(g, inicio));
-            fprintf(arquivoSvg,
-                "<line x1='%.2lf' y1='%.2lf' x2='%.2lf' y2='%.2lf' "
-                "stroke='red' stroke-width='2' stroke-dasharray='5,5' />\n",
-                dadosInicio->x, dadosInicio->y,
-                dadosInicio->x + 20, dadosInicio->y + 20 // arbitrário
-            );
-        }else if(listacaminho && buscarTamanhoLista(listacaminho) >= 2) {
-            char *inicio = (char*)buscarElementoLista(listacaminho, 0);
-            char *fim = (char*)buscarElementoLista(listacaminho, buscarTamanhoLista(listacaminho) - 1);
-
-            DadosVertice *dadosInicio = (DadosVertice*)getNodeInfo(g, getNode(g, inicio));
-            DadosVertice *dadosFim = (DadosVertice*)getNodeInfo(g, getNode(g, fim));
-
-            fprintf(arquivoSvg,
-                "<line x1='%.2lf' y1='%.2lf' x2='%.2lf' y2='%.2lf' "
-                "stroke='red' stroke-width='2' stroke-dasharray='5,5' />\n",
-                dadosInicio->x, dadosInicio->y,
-                dadosFim->x, dadosFim->y
-            );
+// Função auxiliar: sanitiza string para uso seguro em IDs SVG
+static void sanitizarIdSvg(char *str) {
+    for (int i = 0; str[i]; i++) {
+        if (!((str[i] >= 'a' && str[i] <= 'z') ||
+              (str[i] >= 'A' && str[i] <= 'Z') ||
+              (str[i] >= '0' && str[i] <= '9') ||
+              str[i] == '-' || str[i] == '_')) {
+            str[i] = '_';
         }
+    }
+}
 
+static void processarShw(Graph g, char *linha, FILE *arquivoSvg, TabelaGenerica caminho) {
+    char nomePercurso[32], corCurto[16], corRapido[16];
+
+    if (sscanf(linha, "shw %s %s %s", nomePercurso, corCurto, corRapido) != 3) {
+        printf("Erro: Linha inválida no comando shw: %s\n", linha);
         return;
     }
 
-    fprintf(arquivoSvg,  "<polyline fill='none' stroke='%s' stroke-width='3' stroke-opacity='0.6' points='", camCurto);
-    int i;
-    for(i = 0; i < buscarTamanhoLista(listacaminho); i++){
-        char *id = (char*)buscarElementoLista(listacaminho, i);
-        Node vertice = getNode(g, id);
-        DadosVertice *dadosVertice = (DadosVertice*)getNodeInfo(g, vertice);
-        fprintf(arquivoSvg, "%.2lf,%.2lf ", dadosVertice->x, dadosVertice->y);
+    Lista listaCaminho = buscarElementoTabela(caminho, nomePercurso);
+    if (!listaCaminho || buscarTamanhoLista(listaCaminho) < 2) {
+        fprintf(arquivoSvg, "<!-- Caminho '%s' inválido ou inexistente -->\n", nomePercurso);
+        return;
     }
-    fprintf(arquivoSvg, "' />\n");
 
-    fprintf(arquivoSvg, "<polyline fill='none' stroke='%s' stroke-width='1.5' stroke-opacity='0.6' points='", camRapido);
-    for(i = 0; i < buscarTamanhoLista(listacaminho); i++){
-        char *id = (char*)buscarElementoLista(listacaminho, i);
-        Node vertice = getNode(g, id);
-        DadosVertice *dadosVertice = (DadosVertice*)getNodeInfo(g, vertice);
-        fprintf(arquivoSvg, "%.2lf,%.2lf ", dadosVertice->x, dadosVertice->y);
+    // Cria cópia sanitizada para usar nos IDs
+    char nomeSvg[32];
+    strncpy(nomeSvg, nomePercurso, sizeof(nomeSvg));
+    nomeSvg[sizeof(nomeSvg) - 1] = '\0';
+    sanitizarIdSvg(nomeSvg);
+
+    double offsetCurto = -4.0, offsetRapido = 4.0;
+
+    // Caminho mais curto
+    fprintf(arquivoSvg, "<path id='path-%s-curto' d='", nomeSvg);
+    for (int i = 0; i < buscarTamanhoLista(listaCaminho); i++) {
+        char *id = buscarElementoLista(listaCaminho, i);
+        Vertice *info = getNodeInfo(g, getNode(g, id));
+        fprintf(arquivoSvg, "%c%.2lf,%.2lf ", (i == 0 ? 'M' : 'L'), info->x + offsetCurto, info->y + offsetCurto);
     }
-    fprintf(arquivoSvg, "' />\n");
+    fprintf(arquivoSvg, "' stroke='%s' stroke-width='8' fill='none' stroke-opacity='0.9'/>\n", corCurto);
 
-    char *inicio = (char*)buscarElementoLista(listacaminho, 0);
-    char *fim = (char*)buscarElementoLista(listacaminho, buscarTamanhoLista(listacaminho) - 1);
-    DadosVertice *dadosVerticeInicio = (DadosVertice*)getNodeInfo(g, getNode(g, inicio));
-    DadosVertice *dadosVerticeFim = (DadosVertice*)getNodeInfo(g, getNode(g, fim));
+    // Caminho mais rápido
+    fprintf(arquivoSvg, "<path id='path-%s-rapido' d='", nomeSvg);
+    for (int i = 0; i < buscarTamanhoLista(listaCaminho); i++) {
+        char *id = buscarElementoLista(listaCaminho, i);
+        Vertice *info = getNodeInfo(g, getNode(g, id));
+        fprintf(arquivoSvg, "%c%.2lf,%.2lf ", (i == 0 ? 'M' : 'L'), info->x + offsetRapido, info->y + offsetRapido);
+    }
+    fprintf(arquivoSvg, "' stroke='%s' stroke-width='5' fill='none' stroke-opacity='0.7'/>\n", corRapido);
 
-     fprintf(arquivoSvg, "<circle cx='%.2lf' cy='%.2lf' r='5' fill='green' stroke='black' stroke-width='1'/>\n", dadosVerticeInicio->x, dadosVerticeInicio->y);
-
-    fprintf(arquivoSvg, "<rect x='%.2lf' y='%.2lf' width='8' height='8' fill='red' stroke='black' stroke-width='1' transform='translate(-4 -4)'/>\n", dadosVerticeFim->x, dadosVerticeFim->y);
+    // Animação
+    fprintf(arquivoSvg,
+        "<circle r='10' fill='black'>\n"
+        "  <animateMotion dur='10s' repeatCount='indefinite'>\n"
+        "    <mpath href='#path-%s-curto'/>\n"
+        "  </animateMotion>\n"
+        "</circle>\n",
+        nomeSvg);
 
 }
 
+
 ////////////////////////////////////////////////////////////////////////////////////////
 
-static void processarQry(TabelaGenerica t, Graph g, SmuTreap tr, char *caminhoQry, FILE *arquivoSvg, FILE *arquivoTxt){
+void processarQry(char *caminhoGeo, char *caminhoVia, char *caminhoQry, char *caminhoSvg, char *caminhoTxt){
+
+    TabelaGenerica quadras = criarTabela(1200);
+    Lista lista = inicializarLista();
+
+    FILE *arquivoSvg = fopen(caminhoSvg, "w");
+
+    if(arquivoSvg == NULL){
+        printf("Erro: Falha ao gerar o arquivo .svg!\n");
+        return;
+    }
+
+    FILE *arquivoTxt = fopen(caminhoTxt, "w");
+
+    if(arquivoTxt == NULL){
+        printf("Erro? Falha ao gerar o arquivo .txt!\n");
+        fclose(arquivoSvg);
+        return;
+    }
+
+    FILE *arquivoGeo = fopen(caminhoGeo, "r");
+
+    if(arquivoGeo == NULL){
+        printf("Erro: Falha na abertura do arquivo .geo!\n");
+        return;
+    }
+
+    FILE *arquivoVia = fopen(caminhoVia, "r");
+
+    if(arquivoVia == NULL){
+        printf("Erro: Falha na abertura do arquivo .via!\n");
+        fclose(arquivoSvg);
+        fclose(arquivoTxt);
+        return;
+    }
+
+    tagCabecalho(arquivoSvg);
+
+    processarGeo(quadras, lista, arquivoGeo, arquivoSvg);
+
+    int qtdVertices;
+
+    fscanf(arquivoVia, "%d", &qtdVertices);
+
+    Graph grafo = createGraph(qtdVertices, true, "g");
+    SmuTreap arvore = newSmuTreap(1, 5.0, 0.00001, 1000000);
+    TabelaGenerica caminhos = criarTabela(300);
+
+    processarVia(grafo, arquivoVia, arquivoSvg, arvore);
 
     FILE *arquivoQry = fopen(caminhoQry, "r");
 
     if(arquivoQry == NULL){
-        printf("Erro: Falha ao abrir o arquivo .qry!\n");
+        printf("Erro: Falha na abertura do arquivo .qry!\n");
         return;
     }
 
-    char linha [512];
+    char linha [1024];
     Posicao registradores[10];
 
     while(fgets(linha, sizeof(linha), arquivoQry)){
@@ -837,71 +813,30 @@ static void processarQry(TabelaGenerica t, Graph g, SmuTreap tr, char *caminhoQr
         }
 
         if(strncmp(linha, "@o?", 3) == 0){
-            processarArrobaOInterrogacao(t, linha, arquivoSvg, arquivoTxt, registradores);
+            processarArrobaOInterrogacao(quadras, linha, arquivoSvg, arquivoTxt, registradores);
         }else if(strncmp(linha, "alag", 4) == 0){
-            processarAlag(g, tr, linha, arquivoSvg, arquivoTxt);
+            processarAlag(grafo, arvore, linha, arquivoSvg, arquivoTxt);
         }else if(strncmp(linha, "dren", 4) == 0){
-            processarDren(g, linha, arquivoTxt);
+            processarDren(grafo, linha, arquivoTxt);
         }else if(strncmp(linha, "sg", 2) == 0){
-            processarSg(g, tr, linha, arquivoSvg);
+            processarSg(grafo, arvore, linha, arquivoSvg);
         }else if(strncmp(linha, "p?", 2) == 0){
-            processarPInterrogacao(g, linha, arquivoTxt, arquivoSvg, t);
+            processarPInterrogacao(grafo, linha, arquivoTxt, registradores, caminhos);
         }else if(strncmp(linha, "join", 4) == 0){
-            processarJoin(g, linha, arquivoTxt, t);
+            processarJoin(grafo, linha, arquivoTxt, caminhos);
         }else if(strncmp(linha, "shw", 3) == 0){
-            processarShw(g, linha, arquivoSvg, t);
+            processarShw(grafo, linha, arquivoSvg, caminhos);
         }
-    }
-    
-    fclose(arquivoQry);
-
-}
-
-////////////////////////////////////////////////////////////////////////////////////////
-
-void processarArquivos(char *caminhoGeo, char *caminhoVia, char *caminhoQry, char *caminhoSvg, char *caminhoTxt){
-
-    FILE *arquivoSvg = fopen(caminhoSvg, "w");
-
-    if(arquivoSvg == NULL){
-        printf("Erro: Falha na abertura do arquivo %s!\n", caminhoGeo);
-        return;
-    }
-
-    FILE *arquivoTxt = fopen(caminhoTxt, "w");
-
-    printf("[DEBUG] Caminho recebido: '%s'\n", caminhoTxt);
-
-    if(arquivoTxt == NULL){
-        printf("Erro: Falha na abertura do arquivo %s!\n", caminhoTxt);
-        fclose(arquivoSvg);
-        return;
-    }
-
-    tagCabecalho(arquivoSvg);
-
-    TabelaGenerica quadras = processarGeo(caminhoGeo, arquivoSvg);
-
-    Graph grafo = NULL;
-    SmuTreap arvore = NULL;
-
-    if(caminhoVia != NULL){
-        grafo = processarVia(caminhoVia, arquivoSvg, &arvore);
-
-        if(grafo == NULL){
-            printf("Erro: Falha ao gerar o grafo com o arquivo .via!\n");
-            fclose(arquivoSvg);
-            fclose(arquivoTxt);
-            return;
-        }
-    }
-
-    if(caminhoQry != NULL && grafo != NULL){
-        processarQry(quadras, grafo, arvore, caminhoQry, arquivoSvg, arquivoTxt);
     }
 
     tagRodape(arquivoSvg);
 
+    killDG(grafo);
+    desalocarLista(lista);
+    desalocarTabela(quadras);
+
+    fclose(arquivoQry);
     fclose(arquivoSvg);
     fclose(arquivoTxt);
+
 }

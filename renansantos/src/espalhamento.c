@@ -53,6 +53,11 @@ static unsigned int converterStringParaIndice(char *string, int tamanho){
 
 TabelaGenerica criarTabela(int tamanho){
 
+    if(tamanho <= 0){
+        printf("Erro: Tamanho invalido para tabela de espalhamento: %d\n", tamanho);
+        return NULL;
+    }
+
     // Aloca a tabela nova.
     Tabela *novaTabela = (Tabela*)malloc(sizeof(Tabela));
 
@@ -81,24 +86,14 @@ TabelaGenerica criarTabela(int tamanho){
 ////////////////////////////////////////////////////////////////////////////////////////
 
 // Função auxiliar.
-static char *duplicarString(char *string){
-
-    // Aloca a cópia da string
-    char *copia = (char*)malloc(strlen(string) + 1);
-
-    // Verifica a alocação.
-    if(copia == NULL){
-        printf("Erro: Falha na alocacao de memoria para a duplicao de strings!\n");
-        return NULL;
-    }
-
-    // Função strcpy realiza o processo de cópia.
+static char *duplicarString(char *string) {
+    if (string == NULL) return NULL;
+    char *copia = malloc(strlen(string) + 1);
+    if (!copia) return NULL;
     strcpy(copia, string);
-
-    // Retorna a string copiada.
     return copia;
-
 }
+
 
 ////////////////////////////////////////////////////////////////////////////////////////
 
@@ -107,11 +102,12 @@ int inserirElementoTabela(TabelaGenerica t, char *chave, DadoGenerico dado){
     // Acesso para os campos da struct Tabela.
     Tabela *tabela = (Tabela*)t;
 
+    /*
     // Antes do processo de inserção, verifica se o elemento a ser colocado está na tabela.
     if(buscarElementoTabela(t, chave) != NULL){
         printf("Aviso: O elemento nao foi inserido pois ja existe na tabela de espalhamento!\n");
         return 0;
-    }
+    }*/
 
     unsigned int indice = converterStringParaIndice(chave, tabela->tamanho);
 
@@ -194,6 +190,52 @@ DadoGenerico buscarElementoTabela(TabelaGenerica t, char *chave){
 
     return NULL;
 
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+
+bool buscarElementoTabelaComValor(TabelaGenerica t, char *chave, DadoGenerico *valor){
+    
+    Tabela *tabela = (Tabela*)t;
+
+    unsigned int indice = converterStringParaIndice(chave, tabela->tamanho);
+    No *auxiliar = tabela->baldes[indice];
+    DadoGenerico valorEncontrado;
+
+    while(auxiliar != NULL){
+        if(strcmp(auxiliar->chave, chave) == 0){
+            *valor = auxiliar->dado; 
+            return true;
+        }
+        auxiliar = auxiliar->proximo;
+    }
+
+    return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+
+void percorrerTabela(TabelaGenerica t, void (*callback)(DadoGenerico, void*), void *extra){
+    Tabela *tabela = (Tabela*)t;
+
+    for(int i = 0; i < tabela->tamanho; i++){
+        No *atual = tabela->baldes[i];
+
+        while(atual != NULL){
+            callback(atual->dado, extra);
+            atual = atual->proximo;
+        }
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+
+int buscarTamanhoTabela(TabelaGenerica t){
+
+    Tabela *tabela = (Tabela*)t;
+
+    return tabela->tamanho;
+    
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////

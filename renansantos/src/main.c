@@ -74,15 +74,15 @@ int main(int argc, char *argv[]) {
     // Processamento conforme arquivos disponíveis
     if(caminhoVia == NULL && caminhoQry == NULL){
         printf("Processando apenas arquivo .geo!\n");
-        processarArquivos(caminhoGeo, NULL, NULL, caminhoSvg, caminhoTxt);
+        processarQry(caminhoGeo, NULL, NULL, caminhoSvg, caminhoTxt);
     }else if (caminhoVia != NULL && caminhoQry == NULL){
         printf("Processando arquivo .geo e .via!\n");
-        processarArquivos(caminhoGeo, caminhoVia, NULL, caminhoSvg, caminhoTxt);
+        processarQry(caminhoGeo, caminhoVia, NULL, caminhoSvg, caminhoTxt);
     }else if(caminhoVia == NULL && caminhoQry != NULL){
         printf("Erro: Arquivo .via eh essencial nesse caso!\n");
     }else if(caminhoVia != NULL && caminhoQry != NULL) {
         printf("Processando arquivos .geo, .via e .qry!\n");
-        processarArquivos(caminhoGeo, caminhoVia, caminhoQry, caminhoSvg, caminhoTxt);
+        processarQry(caminhoGeo, caminhoVia, caminhoQry, caminhoSvg, caminhoTxt);
     }
 
     // Liberação de memória

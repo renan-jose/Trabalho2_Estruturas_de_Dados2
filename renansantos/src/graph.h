@@ -22,6 +22,7 @@
 
 /* Importação das bibliotecas. */
 #include "lista.h"
+#include "smutreap.h"
 #include <stdbool.h>
 
 // Nomes alternativos para os tipos de dados existentes.
@@ -375,13 +376,28 @@ void ativarAresta(Graph g, Edge e);
 
 /* Desativa a aresta e do grafo g. 
  * Parâmetros:
- *    - g = grafo (tipo Graph)
- *    - e = aresta do grafo g (tipo Edge) 
+ *    - g = grafo (tipo Graph);
+ *    - e = aresta do grafo g (tipo Edge)
  * Retorno:
  *    - nenhum; 
  */
 void desativarAresta(Graph g, Edge e);
 
-Node includeNodeSDG(Graph g, char *nomeSubgrafo, Node node);
+/* Verifica se a aresta e está ativa.
+ * Parâmetros:
+ *    - g = grafo (tipo Graph);
+ *    - e = aresta (tipo Edge):
+ * Retorno:
+ *    - true se a aresta estiver ativa, false caso contrário;
+ */
+bool isArestaAtiva(Graph g, Edge e);
+
+/* Retorna a arvore do grafo. 
+ * Parametros:
+ *    - g = grafo (tipo Graph);
+ * Retorno:
+ *    - árvore do grafo (tipo SmuTreap);
+ */
+SmuTreap getArvoreGrafo(Graph g);
 
 #endif 
